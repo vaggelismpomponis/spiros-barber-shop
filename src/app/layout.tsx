@@ -9,14 +9,15 @@ export const metadata: Metadata = {
   title: 'Spiros Barber Shop',
   description: 'Book your next haircut at Spiros Barber Shop',
   icons: {
-    icon: [
-      { url: '/barber-marker.svg', type: 'image/svg+xml' },
-      { url: '/favicon.ico' }
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    other: [
+      {
+        rel: 'mask-icon',
+        url: '/favicon.svg',
+      },
     ],
-    apple: [
-      { url: '/apple-icon.png' }
-    ]
-  }
+  },
 }
 
 export default function RootLayout({
@@ -26,6 +27,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+      </head>
       <body className={inter.className}>
         <Header />
         <main>{children}</main>
