@@ -62,14 +62,24 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    console.log('Webhook request received:', {
+    // Log request details
+    const requestDetails = {
       method: req.method,
       url: req.url,
       headers: Object.fromEntries(req.headers.entries())
-    })
+    }
+    console.log('Webhook request received:', requestDetails)
 
     const rawBody = await req.text()
     console.log('Raw body:', rawBody)
+
+    // Verify environment variables are set
+    console.log('Environment check:', {
+      hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasWebhookSecret: !!process.env.CAL_WEBHOOK_SECRET,
+      hasOwnerEmail: !!process.env.CAL_OWNER_EMAIL
+    })
 
     // Handle test ping from Cal.com - Skip signature verification for test pings
     if (rawBody.includes('"ping":true') || rawBody.includes('"type":"test"')) {
@@ -80,6 +90,10 @@ export async function POST(req: Request) {
 
     // For non-test requests, verify signature
     const signature = req.headers.get('cal-signature') || req.headers.get('X-Cal-Signature-256')
+    console.log('Signature verification:', {
+      hasSignature: !!signature,
+      signature: signature
+    })
     
     // Verify Cal.com webhook signature
     const isValid = verifyCalSignature(
@@ -100,6 +114,7 @@ export async function POST(req: Request) {
     let body
     try {
       body = JSON.parse(rawBody)
+      console.log('Parsed webhook body:', body)
     } catch (error) {
       console.error('Failed to parse webhook body:', error)
       const response = NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
@@ -108,6 +123,7 @@ export async function POST(req: Request) {
 
     // Only process booking events
     if (!body.triggerEvent?.startsWith('booking')) {
+      console.log('Ignoring non-booking event:', body.triggerEvent)
       const response = NextResponse.json({ message: 'Event type ignored' })
       return addCorsHeaders(response)
     }
@@ -133,10 +149,12 @@ export async function POST(req: Request) {
     const userEmail = attendees?.find((a: any) => a.email !== process.env.CAL_OWNER_EMAIL)?.email
 
     if (!userEmail) {
-      console.error('User email not found in attendees')
+      console.error('User email not found in attendees:', attendees)
       const response = NextResponse.json({ error: 'User email not found' }, { status: 400 })
       return addCorsHeaders(response)
     }
+
+    console.log('Looking up user by email:', userEmail)
 
     // Find the user by email using service role client
     const { data: userData, error: userError } = await supabase
@@ -181,7 +199,12 @@ export async function POST(req: Request) {
     const response = NextResponse.json({ success: true })
     return addCorsHeaders(response)
   } catch (error) {
-    console.error('Webhook error:', error)
+    // Log the full error details
+    console.error('Webhook error:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
     return addCorsHeaders(response)
   }
