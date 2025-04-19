@@ -54,14 +54,15 @@ export async function POST(req: Request) {
     const rawBody = await req.text()
     console.log('Raw body:', rawBody)
 
-    // Handle test ping from Cal.com
+    // Handle test ping from Cal.com - Skip signature verification for test pings
     if (rawBody.includes('"ping":true') || rawBody.includes('"type":"test"')) {
       console.log('Received test ping from Cal.com')
       const response = NextResponse.json({ message: 'Webhook test successful' })
       return addCorsHeaders(response)
     }
 
-    const signature = req.headers.get('cal-signature')
+    // For non-test requests, verify signature
+    const signature = req.headers.get('cal-signature') || req.headers.get('X-Cal-Signature-256')
     
     // Verify Cal.com webhook signature
     const isValid = verifyCalSignature(
