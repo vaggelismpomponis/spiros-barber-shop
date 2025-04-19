@@ -34,6 +34,5 @@ export const config = {
     '/profile/:path*',
     '/admin/:path*',
     '/settings/:path*',
-    '/api/webhooks/:path*',
   ],
 } 
