@@ -1,8 +1,5 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 
 // Webhook handler for Cal.com integration
 // Handles booking events and test pings
@@ -20,32 +17,11 @@ const supabase = createClient(
   }
 )
 
-function verifyCalSignature(payload: string, signature: string | null, secret: string | undefined): boolean {
-  if (!signature || !secret) {
-    console.log('Missing signature or secret:', { hasSignature: !!signature, hasSecret: !!secret })
-    return process.env.NODE_ENV === 'development'
-  }
-  
-  try {
-    const hmac = crypto.createHmac('sha256', secret)
-    const computedSignature = hmac.update(payload).digest('hex')
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(computedSignature)
-    )
-    console.log('Signature verification:', { isValid, signature, computedSignature })
-    return isValid
-  } catch (error) {
-    console.error('Error verifying signature:', error)
-    return process.env.NODE_ENV === 'development'
-  }
-}
-
 // Add CORS headers to response
 function addCorsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*')
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'X-Cal-Signature-256, cal-signature, Content-Type')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
   return response
 }
 
@@ -77,37 +53,13 @@ export async function POST(req: Request) {
     console.log('Environment check:', {
       hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasWebhookSecret: !!process.env.CAL_WEBHOOK_SECRET,
       hasOwnerEmail: !!process.env.CAL_OWNER_EMAIL
     })
 
-    // Handle test ping from Cal.com - Skip signature verification for test pings
+    // Handle test ping from Cal.com
     if (rawBody.includes('"ping":true') || rawBody.includes('"type":"test"')) {
       console.log('Received test ping from Cal.com')
       const response = NextResponse.json({ message: 'Webhook test successful' })
-      return addCorsHeaders(response)
-    }
-
-    // For non-test requests, verify signature
-    const signature = req.headers.get('cal-signature') || req.headers.get('X-Cal-Signature-256')
-    console.log('Signature verification:', {
-      hasSignature: !!signature,
-      signature: signature
-    })
-    
-    // Verify Cal.com webhook signature
-    const isValid = verifyCalSignature(
-      rawBody,
-      signature,
-      process.env.CAL_WEBHOOK_SECRET
-    )
-
-    if (!isValid && process.env.NODE_ENV !== 'development') {
-      console.error('Invalid webhook signature')
-      const response = NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      )
       return addCorsHeaders(response)
     }
 
