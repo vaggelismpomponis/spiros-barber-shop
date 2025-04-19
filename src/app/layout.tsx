@@ -8,6 +8,15 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Spiros Barber Shop',
   description: 'Book your next haircut at Spiros Barber Shop',
+  icons: {
+    icon: [
+      { url: '/barber-marker.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' }
+    ],
+    apple: [
+      { url: '/apple-icon.png' }
+    ]
+  }
 }
 
 export default function RootLayout({
