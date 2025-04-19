@@ -20,23 +20,47 @@ const supabase = createClient(
 // Add CORS headers to response
 function addCorsHeaders(response: NextResponse) {
   response.headers.set('Access-Control-Allow-Origin', '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, HEAD, OPTIONS')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
   return response
 }
 
 // Handle OPTIONS requests (CORS preflight)
 export async function OPTIONS(req: Request) {
+  console.log('Received OPTIONS request')
   return addCorsHeaders(new NextResponse(null, { status: 200 }))
 }
 
 // Add a GET handler for testing
 export async function GET(req: Request) {
+  console.log('Received GET request')
   const response = NextResponse.json({ message: 'Cal.com webhook endpoint is accessible' })
   return addCorsHeaders(response)
 }
 
+// Add handlers for other methods
+export async function HEAD(req: Request) {
+  console.log('Received HEAD request')
+  return addCorsHeaders(new NextResponse(null, { status: 200 }))
+}
+
+export async function PUT(req: Request) {
+  console.log('Received PUT request')
+  return handleWebhook(req)
+}
+
+export async function DELETE(req: Request) {
+  console.log('Received DELETE request')
+  return handleWebhook(req)
+}
+
 export async function POST(req: Request) {
+  console.log('Received POST request')
+  return handleWebhook(req)
+}
+
+// Common handler for webhook requests
+async function handleWebhook(req: Request) {
   try {
     // Log request details
     const requestDetails = {
