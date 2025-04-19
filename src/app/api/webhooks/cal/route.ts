@@ -24,9 +24,23 @@ function verifyCalSignature(payload: string, signature: string | null, secret: s
   }
 }
 
+// Add CORS headers to response
+function addCorsHeaders(response: NextResponse) {
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'X-Cal-Signature-256, cal-signature, Content-Type')
+  return response
+}
+
+// Handle OPTIONS requests (CORS preflight)
+export async function OPTIONS(req: Request) {
+  return addCorsHeaders(new NextResponse(null, { status: 200 }))
+}
+
 // Add a GET handler for testing
 export async function GET(req: Request) {
-  return NextResponse.json({ message: 'Cal.com webhook endpoint is accessible' })
+  const response = NextResponse.json({ message: 'Cal.com webhook endpoint is accessible' })
+  return addCorsHeaders(response)
 }
 
 export async function POST(req: Request) {
@@ -43,7 +57,8 @@ export async function POST(req: Request) {
     // Handle test ping from Cal.com
     if (rawBody.includes('"ping":true') || rawBody.includes('"type":"test"')) {
       console.log('Received test ping from Cal.com')
-      return NextResponse.json({ message: 'Webhook test successful' })
+      const response = NextResponse.json({ message: 'Webhook test successful' })
+      return addCorsHeaders(response)
     }
 
     const signature = req.headers.get('cal-signature')
@@ -57,10 +72,11 @@ export async function POST(req: Request) {
 
     if (!isValid && process.env.NODE_ENV !== 'development') {
       console.error('Invalid webhook signature')
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 }
       )
+      return addCorsHeaders(response)
     }
 
     let body
@@ -68,14 +84,14 @@ export async function POST(req: Request) {
       body = JSON.parse(rawBody)
     } catch (error) {
       console.error('Failed to parse webhook body:', error)
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+      const response = NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+      return addCorsHeaders(response)
     }
 
-    console.log('Webhook event type:', body.triggerEvent)
-    
     // Only process booking events
     if (!body.triggerEvent?.startsWith('booking')) {
-      return NextResponse.json({ message: 'Event type ignored' })
+      const response = NextResponse.json({ message: 'Event type ignored' })
+      return addCorsHeaders(response)
     }
     
     // Extract relevant data from the webhook payload
@@ -100,7 +116,8 @@ export async function POST(req: Request) {
 
     if (!userEmail) {
       console.error('User email not found in attendees')
-      return NextResponse.json({ error: 'User email not found' }, { status: 400 })
+      const response = NextResponse.json({ error: 'User email not found' }, { status: 400 })
+      return addCorsHeaders(response)
     }
 
     // Initialize Supabase client
@@ -115,12 +132,14 @@ export async function POST(req: Request) {
 
     if (userError) {
       console.error('Error finding user:', userError)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      const response = NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return addCorsHeaders(response)
     }
 
     if (!userData) {
       console.error('No user found for email:', userEmail)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      const response = NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return addCorsHeaders(response)
     }
 
     console.log('Found user:', userData)
@@ -139,13 +158,16 @@ export async function POST(req: Request) {
 
     if (appointmentError) {
       console.error('Error creating appointment:', appointmentError)
-      return NextResponse.json({ error: 'Failed to create appointment' }, { status: 500 })
+      const response = NextResponse.json({ error: 'Failed to create appointment' }, { status: 500 })
+      return addCorsHeaders(response)
     }
 
     console.log('Appointment created/updated successfully')
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    return addCorsHeaders(response)
   } catch (error) {
     console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const response = NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return addCorsHeaders(response)
   }
 } 
