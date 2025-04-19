@@ -23,5 +23,11 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "/api/webhooks/cal": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  }
 } 
