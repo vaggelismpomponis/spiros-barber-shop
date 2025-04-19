@@ -24,6 +24,11 @@ function verifyCalSignature(payload: string, signature: string | null, secret: s
   }
 }
 
+// Add a GET handler for testing
+export async function GET(req: Request) {
+  return NextResponse.json({ message: 'Cal.com webhook endpoint is accessible' })
+}
+
 export async function POST(req: Request) {
   try {
     console.log('Webhook request received:', {
