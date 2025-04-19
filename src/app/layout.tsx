@@ -6,8 +6,8 @@ import { Header } from '@/components/Header'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BarberShop App',
-  description: 'Book your next haircut with ease',
+  title: 'Spiros Barber Shop',
+  description: 'Book your next haircut at Spiros Barber Shop',
 }
 
 export default function RootLayout({

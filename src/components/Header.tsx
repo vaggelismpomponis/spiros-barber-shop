@@ -16,9 +16,6 @@ export function Header() {
           <Link href="/bookings" className="text-gray-600 hover:text-black transition-colors">
             Book Now
           </Link>
-          <Link href="/contact" className="text-gray-600 hover:text-black transition-colors">
-            Contact
-          </Link>
         </nav>
 
         <UserMenu />
