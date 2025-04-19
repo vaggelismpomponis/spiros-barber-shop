@@ -3,8 +3,14 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const protectedRoutes = ['/dashboard', '/profile', '/admin', '/settings']
+const publicRoutes = ['/api/webhooks/cal']
 
 export async function middleware(req: NextRequest) {
+  // Skip middleware for webhook endpoints
+  if (publicRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
   const { data: { session } } = await supabase.auth.getSession()
@@ -28,5 +34,6 @@ export const config = {
     '/profile/:path*',
     '/admin/:path*',
     '/settings/:path*',
+    '/api/webhooks/:path*',
   ],
 } 

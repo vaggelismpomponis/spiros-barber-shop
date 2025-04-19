@@ -4,19 +4,43 @@ import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 
 function verifyCalSignature(payload: string, signature: string | null, secret: string | undefined): boolean {
-  if (!signature || !secret) return false
+  if (!signature || !secret) {
+    console.log('Missing signature or secret:', { hasSignature: !!signature, hasSecret: !!secret })
+    return process.env.NODE_ENV === 'development'
+  }
   
-  const hmac = crypto.createHmac('sha256', secret)
-  const computedSignature = hmac.update(payload).digest('hex')
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(computedSignature)
-  )
+  try {
+    const hmac = crypto.createHmac('sha256', secret)
+    const computedSignature = hmac.update(payload).digest('hex')
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(computedSignature)
+    )
+    console.log('Signature verification:', { isValid, signature, computedSignature })
+    return isValid
+  } catch (error) {
+    console.error('Error verifying signature:', error)
+    return process.env.NODE_ENV === 'development'
+  }
 }
 
 export async function POST(req: Request) {
   try {
+    console.log('Webhook request received:', {
+      method: req.method,
+      url: req.url,
+      headers: Object.fromEntries(req.headers.entries())
+    })
+
     const rawBody = await req.text()
+    console.log('Raw body:', rawBody)
+
+    // Handle test ping from Cal.com
+    if (rawBody.includes('"ping":true') || rawBody.includes('"type":"test"')) {
+      console.log('Received test ping from Cal.com')
+      return NextResponse.json({ message: 'Webhook test successful' })
+    }
+
     const signature = req.headers.get('X-Cal-Signature-256')
     
     // Verify Cal.com webhook signature
@@ -26,14 +50,28 @@ export async function POST(req: Request) {
       process.env.CAL_WEBHOOK_SECRET
     )
 
-    if (!isValid) {
+    if (!isValid && process.env.NODE_ENV !== 'development') {
+      console.error('Invalid webhook signature')
       return NextResponse.json(
         { error: 'Invalid signature' },
         { status: 401 }
       )
     }
 
-    const body = JSON.parse(rawBody)
+    let body
+    try {
+      body = JSON.parse(rawBody)
+    } catch (error) {
+      console.error('Failed to parse webhook body:', error)
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
+
+    console.log('Webhook event type:', body.triggerEvent)
+    
+    // Only process booking events
+    if (!body.triggerEvent?.startsWith('booking')) {
+      return NextResponse.json({ message: 'Event type ignored' })
+    }
     
     // Extract relevant data from the webhook payload
     const {
@@ -44,10 +82,19 @@ export async function POST(req: Request) {
       attendees,
     } = body.payload
 
+    console.log('Extracted appointment data:', {
+      cal_event_uid,
+      service_name,
+      start_time,
+      end_time,
+      attendees
+    })
+
     // Get the user's email from the attendees
-    const userEmail = attendees.find((a: any) => a.email !== process.env.CAL_OWNER_EMAIL)?.email
+    const userEmail = attendees?.find((a: any) => a.email !== process.env.CAL_OWNER_EMAIL)?.email
 
     if (!userEmail) {
+      console.error('User email not found in attendees')
       return NextResponse.json({ error: 'User email not found' }, { status: 400 })
     }
 
@@ -56,14 +103,22 @@ export async function POST(req: Request) {
 
     // Find the user by email
     const { data: userData, error: userError } = await supabase
-      .from('auth.users')
+      .from('profiles')
       .select('id')
       .eq('email', userEmail)
       .single()
 
-    if (userError || !userData) {
+    if (userError) {
+      console.error('Error finding user:', userError)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
+    if (!userData) {
+      console.error('No user found for email:', userEmail)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    console.log('Found user:', userData)
 
     // Create the appointment
     const { error: appointmentError } = await supabase
@@ -74,7 +129,7 @@ export async function POST(req: Request) {
         service_name,
         start_time,
         end_time,
-        status: 'confirmed',
+        status: body.triggerEvent === 'booking_created' ? 'confirmed' : 'cancelled'
       })
 
     if (appointmentError) {
@@ -82,6 +137,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to create appointment' }, { status: 500 })
     }
 
+    console.log('Appointment created/updated successfully')
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Webhook error:', error)
