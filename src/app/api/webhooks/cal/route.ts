@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Webhook test successful' })
     }
 
-    const signature = req.headers.get('X-Cal-Signature-256')
+    const signature = req.headers.get('cal-signature')
     
     // Verify Cal.com webhook signature
     const isValid = verifyCalSignature(
