@@ -1,7 +1,24 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+
+// Webhook handler for Cal.com integration
+// Handles booking events and test pings
+// Updated with proper signature verification
+
+// Initialize Supabase client with service role
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 function verifyCalSignature(payload: string, signature: string | null, secret: string | undefined): boolean {
   if (!signature || !secret) {
@@ -121,10 +138,7 @@ export async function POST(req: Request) {
       return addCorsHeaders(response)
     }
 
-    // Initialize Supabase client
-    const supabase = createRouteHandlerClient({ cookies })
-
-    // Find the user by email
+    // Find the user by email using service role client
     const { data: userData, error: userError } = await supabase
       .from('profiles')
       .select('id')
@@ -145,7 +159,7 @@ export async function POST(req: Request) {
 
     console.log('Found user:', userData)
 
-    // Create the appointment
+    // Create the appointment using service role client
     const { error: appointmentError } = await supabase
       .from('appointments')
       .upsert({
