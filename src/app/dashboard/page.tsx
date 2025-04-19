@@ -22,15 +22,21 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setError(null)
         // Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
+        if (userError) {
+          setError(`Auth error: ${userError.message}`)
+          return
+        }
+        if (!user) {
           router.push('/auth/signin')
           return
         }
@@ -42,7 +48,9 @@ export default function DashboardPage() {
           .eq('id', user.id)
           .single()
 
-        if (!profileError && profileData) {
+        if (profileError) {
+          setError(`Profile error: ${profileError.message}`)
+        } else if (profileData) {
           setProfile({
             email: user.email || '',
             full_name: profileData.full_name
@@ -51,20 +59,25 @@ export default function DashboardPage() {
 
         // Fetch upcoming appointments
         const now = new Date().toISOString()
+        console.log('Fetching appointments for user:', user.id)
         const { data: appointmentsData, error: appointmentsError } = await supabase
           .from('appointments')
           .select('*')
           .eq('user_id', user.id)
-          .eq('status', 'confirmed')
+          .in('status', ['confirmed'])
           .gte('start_time', now)
           .order('start_time', { ascending: true })
-          .limit(5)
 
-        if (!appointmentsError && appointmentsData) {
-          setAppointments(appointmentsData)
+        if (appointmentsError) {
+          setError(`Appointments error: ${appointmentsError.message}`)
+          console.error('Error fetching appointments:', appointmentsError)
+        } else {
+          console.log('Appointments found:', appointmentsData?.length || 0)
+          setAppointments(appointmentsData || [])
         }
       } catch (error) {
         console.error('Error fetching data:', error)
+        setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`)
       } finally {
         setLoading(false)
       }
@@ -98,6 +111,12 @@ export default function DashboardPage() {
               Welcome{profile?.full_name ? `, ${profile.full_name}` : ''}!
             </h1>
             
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {/* Quick Actions */}
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
@@ -115,12 +134,30 @@ export default function DashboardPage() {
                   >
                     View Profile
                   </button>
+                  <button
+                    onClick={() => {
+                      fetch('/api/test')
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            window.location.reload()
+                          } else {
+                            console.error('Test appointment error:', data.error)
+                          }
+                        })
+                    }}
+                    className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
+                  >
+                    Create Test Appointment
+                  </button>
                 </div>
               </div>
 
               {/* Upcoming Appointments */}
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-4">Upcoming Appointments</h2>
+                <h2 className="text-lg font-semibold mb-4">
+                  Upcoming Appointments ({appointments.length})
+                </h2>
                 {appointments.length > 0 ? (
                   <div className="space-y-4">
                     {appointments.map((appointment) => {
@@ -131,13 +168,20 @@ export default function DashboardPage() {
                       return (
                         <div
                           key={appointment.id}
-                          className="bg-white p-4 rounded-md shadow-sm border border-gray-100"
+                          className={`bg-white p-4 rounded-md shadow-sm border ${
+                            appointment.status === 'cancelled' 
+                              ? 'border-red-200 bg-red-50' 
+                              : 'border-gray-100'
+                          }`}
                         >
                           <h3 className="font-medium text-gray-900">
                             {appointment.service_name}
                           </h3>
                           <p className="text-sm text-gray-500">{dateStr}</p>
                           <p className="text-sm text-gray-500">{timeStr}</p>
+                          {appointment.status === 'cancelled' && (
+                            <p className="text-sm text-red-600 mt-2">Cancelled</p>
+                          )}
                         </div>
                       )
                     })}
