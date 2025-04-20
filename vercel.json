@@ -1,13 +1,13 @@
 {
   "rewrites": [
     {
-      "source": "api/webhooks/cal",
-      "destination": "api/webhooks/cal"
+      "source": "/api/webhooks/cal",
+      "destination": "/api/webhooks/cal"
     }
   ],
   "headers": [
     {
-      "source": "api/webhooks/cal",
+      "source": "/api/webhooks/cal",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -25,7 +25,7 @@
     }
   ],
   "functions": {
-    "api/webhooks/cal": {
+    "src/app/api/webhooks/cal/route": {
       "memory": 1024,
       "maxDuration": 10
     }
