@@ -47,6 +47,48 @@ const applyMigration = async (filePath: string) => {
     const { error: migrationError } = await supabase.rpc('execute_sql', { sql_string: sql })
 
     if (migrationError) {
+      if (migrationError.message.includes('function "execute_sql" does not exist')) {
+        // Create the necessary functions first
+        const setupSql = `
+          -- Function to create migrations table
+          CREATE OR REPLACE FUNCTION create_migrations_table()
+          RETURNS void
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $$
+          BEGIN
+            CREATE TABLE IF NOT EXISTS migrations (
+              id SERIAL PRIMARY KEY,
+              name TEXT UNIQUE NOT NULL,
+              applied_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+            );
+          END;
+          $$;
+
+          -- Function to execute SQL
+          CREATE OR REPLACE FUNCTION execute_sql(sql_string text)
+          RETURNS void
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $$
+          BEGIN
+            EXECUTE sql_string;
+          END;
+          $$;
+        `
+
+        // Execute the setup SQL directly through a stored procedure
+        const { error: setupError } = await supabase.rpc('execute_sql', { sql_string: setupSql })
+        
+        if (setupError) {
+          console.error(`Error creating migration functions: ${setupError.message}`)
+          throw setupError
+        }
+
+        // Try applying the migration again now that the functions are created
+        return applyMigration(filePath)
+      }
+
       console.error(`Error applying migration: ${migrationError.message}`)
       throw migrationError
     }
@@ -64,7 +106,7 @@ const applyMigration = async (filePath: string) => {
     console.log(`Successfully applied migration: ${path.basename(filePath)}`)
   } catch (error: any) {
     if (error.message.includes('function "create_migrations_table" does not exist')) {
-      // Create the necessary functions
+      // Handle the case where create_migrations_table doesn't exist
       const setupSql = `
         -- Function to create migrations table
         CREATE OR REPLACE FUNCTION create_migrations_table()
@@ -93,6 +135,7 @@ const applyMigration = async (filePath: string) => {
         $$;
       `
 
+      // Try to execute the setup SQL directly
       const { error: setupError } = await supabase.rpc('execute_sql', { sql_string: setupSql })
 
       if (setupError && !setupError.message.includes('function "execute_sql" does not exist')) {
