@@ -70,7 +70,7 @@ export function UserMenu() {
   }
 
   if (loading) {
-    return <div className="h-8 w-8 rounded-full bg-gray-200 animate-pulse" />
+    return <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
   }
 
   if (!user) {
@@ -98,13 +98,13 @@ export function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center focus:outline-none"
       >
-        <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-white text-sm font-medium border-2 border-white hover:border-gray-300 transition-colors overflow-hidden">
+        <div className="h-10 w-10 rounded-full bg-gray-800 flex items-center justify-center text-white text-base font-medium border-2 border-white hover:border-gray-300 transition-colors overflow-hidden">
           {profile?.avatar_url ? (
             <Image
               src={profile.avatar_url}
               alt="Profile"
-              width={32}
-              height={32}
+              width={40}
+              height={40}
               className="object-cover w-full h-full"
             />
           ) : (
