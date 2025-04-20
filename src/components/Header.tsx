@@ -3,7 +3,7 @@ import { UserMenu } from './UserMenu'
 
 export function Header() {
   return (
-    <header className="w-full border-b bg-white">
+    <header className="w-full border-b bg-white relative z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold text-black">
           Barbershop
