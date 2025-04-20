@@ -6,18 +6,10 @@ import * as dotenv from 'dotenv'
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' })
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+// Initialize Supabase client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Error: Missing required environment variables')
-  console.error('Please ensure you have set the following in .env.local:')
-  console.error('- NEXT_PUBLIC_SUPABASE_URL')
-  console.error('- SUPABASE_SERVICE_ROLE_KEY')
-  process.exit(1)
-}
-
-// Initialize Supabase client with service role key
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -25,72 +17,118 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 })
 
-async function applyMigration(filePath: string) {
+// Function to read SQL file content
+const readSqlFile = (filePath: string): string => {
+  return fs.readFileSync(filePath, 'utf8')
+}
+
+// Function to apply a single migration
+const applyMigration = async (filePath: string) => {
+  console.log(`Applying migration: ${path.basename(filePath)}`)
+  const sql = readSqlFile(filePath)
+
   try {
-    const sql = fs.readFileSync(filePath, 'utf8')
-    console.log(`Applying migration: ${path.basename(filePath)}`)
-    console.log('SQL:', sql)
-    
-    // First try to execute directly
-    try {
-      const { error: directError } = await supabase.rpc('apply_migration', { migration_sql: sql })
-      if (!directError) {
-        console.log(`Successfully applied migration: ${path.basename(filePath)}`)
-        return
-      }
-      // If direct execution fails, it might be because the function doesn't exist yet
-      if (directError.message.includes('function "apply_migration" does not exist')) {
-        // Create and execute the migration function
-        const createFunctionSql = `
-          CREATE OR REPLACE FUNCTION apply_migration(migration_sql text)
-          RETURNS void AS $$
-          BEGIN
-            EXECUTE migration_sql;
-          END;
-          $$ LANGUAGE plpgsql SECURITY DEFINER;
-        `;
-        
-        const { error } = await supabase.rpc('apply_migration', { migration_sql: createFunctionSql })
-        if (error) throw error
-        
-        // Now try applying the original migration again
-        const { error: retryError } = await supabase.rpc('apply_migration', { migration_sql: sql })
-        if (retryError) throw retryError
-        
-        console.log(`Successfully created migration function: ${path.basename(filePath)}`)
-        return
-      }
-      throw directError
-    } catch (error) {
-      console.error(`Error applying migration ${path.basename(filePath)}:`, error)
-      throw error
+    // Create migrations table if it doesn't exist
+    await supabase.rpc('create_migrations_table')
+
+    // Check if migration was already applied
+    const { data: existingMigration } = await supabase
+      .from('migrations')
+      .select('id')
+      .eq('name', path.basename(filePath))
+      .single()
+
+    if (existingMigration) {
+      console.log(`Migration ${path.basename(filePath)} was already applied, skipping...`)
+      return
     }
-  } catch (error) {
-    console.error(`Error reading or applying migration ${path.basename(filePath)}:`, error)
+
+    // Apply the migration
+    const { error: migrationError } = await supabase.rpc('execute_sql', { sql_string: sql })
+
+    if (migrationError) {
+      console.error(`Error applying migration: ${migrationError.message}`)
+      throw migrationError
+    }
+
+    // Record the migration
+    const { error: recordError } = await supabase
+      .from('migrations')
+      .insert({ name: path.basename(filePath) })
+
+    if (recordError) {
+      console.error(`Error recording migration: ${recordError.message}`)
+      throw recordError
+    }
+
+    console.log(`Successfully applied migration: ${path.basename(filePath)}`)
+  } catch (error: any) {
+    if (error.message.includes('function "create_migrations_table" does not exist')) {
+      // Create the necessary functions
+      const setupSql = `
+        -- Function to create migrations table
+        CREATE OR REPLACE FUNCTION create_migrations_table()
+        RETURNS void
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          CREATE TABLE IF NOT EXISTS migrations (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            applied_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+          );
+        END;
+        $$;
+
+        -- Function to execute SQL
+        CREATE OR REPLACE FUNCTION execute_sql(sql_string text)
+        RETURNS void
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          EXECUTE sql_string;
+        END;
+        $$;
+      `
+
+      const { error: setupError } = await supabase.rpc('execute_sql', { sql_string: setupSql })
+
+      if (setupError && !setupError.message.includes('function "execute_sql" does not exist')) {
+        console.error(`Error creating migration functions: ${setupError.message}`)
+        throw setupError
+      }
+
+      // Try applying the migration again
+      return applyMigration(filePath)
+    }
+
     throw error
   }
 }
 
-async function main() {
+// Function to apply all migrations
+export const applyMigrations = async () => {
+  const migrationsDir = path.join(process.cwd(), 'src', 'db', 'migrations')
+  
   try {
-    // Get all migration files
-    const migrationsDir = path.join(__dirname, 'migrations')
+    // Get all SQL files in the migrations directory
     const files = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
-      .sort() // Apply in alphabetical order
-
-    console.log('Found migration files:', files)
+      .sort() // Apply migrations in alphabetical order
 
     // Apply each migration
     for (const file of files) {
       await applyMigration(path.join(migrationsDir, file))
     }
 
-    console.log('All migrations applied successfully!')
+    console.log('All migrations applied successfully')
   } catch (error) {
-    console.error('Migration error:', error)
-    process.exit(1)
+    console.error('Error applying migrations:', error)
+    throw error
   }
 }
 
-main() 
+// Export the function for use in other files
+export default applyMigrations 
