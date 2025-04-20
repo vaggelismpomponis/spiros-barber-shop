@@ -35,8 +35,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Message sent successfully' })
   } catch (error) {
     console.error('Error processing contact form:', error)
+    let errorMessage = 'Failed to process contact form'
+    
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      })
+      errorMessage = error.message
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to process contact form' },
+      { error: errorMessage },
       { status: 500 }
     )
   }
