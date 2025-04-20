@@ -9,6 +9,14 @@ export function Header() {
 
   return (
     <header className="w-full border-b bg-white relative z-50">
+      {/* Top header section for auth */}
+      <div className="w-full bg-gray-50 py-2 border-b">
+        <div className="container mx-auto px-4 flex justify-end">
+          <UserMenu />
+        </div>
+      </div>
+
+      {/* Main header section */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold text-black">
           Barbershop
@@ -57,15 +65,11 @@ export function Header() {
             )}
           </svg>
         </button>
-
-        <div className="flex items-center">
-          <UserMenu />
-        </div>
       </div>
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-b shadow-lg">
+        <div className="md:hidden absolute top-[calc(4rem+2.5rem)] left-0 right-0 bg-white border-b shadow-lg">
           <nav className="container mx-auto px-4 py-3 flex flex-col space-y-3">
             <Link
               href="/services"
