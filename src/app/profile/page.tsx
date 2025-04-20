@@ -192,7 +192,7 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h1 className="text-2xl font-bold mb-8">Profile Settings</h1>
+            <h1 className="text-2xl font-bold mb-8 text-center">Profile Settings</h1>
 
             {/* Profile Image Section */}
             <div className="mb-8 flex flex-col items-center">

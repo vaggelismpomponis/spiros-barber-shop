@@ -8,7 +8,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   return (
-    <header className="w-full border-b bg-white relative z-50">
+    <header className="w-full border-b border-gray-800 bg-black relative z-50">
       {/* Top header section for auth */}
       <div className="w-full bg-gray-50 py-2 border-b">
         <div className="container mx-auto px-4 flex justify-end">
@@ -18,26 +18,26 @@ export function Header() {
 
       {/* Main header section */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="text-2xl font-bold text-black">
+        <Link href="/" className="text-2xl font-bold text-white">
           Barbershop
         </Link>
         
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/services" className="text-gray-600 hover:text-black transition-colors">
+          <Link href="/services" className="text-gray-300 hover:text-white transition-colors">
             Services
           </Link>
-          <Link href="/bookings" className="text-gray-600 hover:text-black transition-colors">
+          <Link href="/bookings" className="text-gray-300 hover:text-white transition-colors">
             Book Now
           </Link>
-          <Link href="/contact" className="text-gray-600 hover:text-black transition-colors">
+          <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
             Contact
           </Link>
         </nav>
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200"
+          className="md:hidden p-2 focus:outline-none text-white"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -69,25 +69,25 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-[calc(4rem+2.5rem)] left-0 right-0 bg-white border-b shadow-lg">
+        <div className="md:hidden absolute top-[calc(4rem+2.5rem)] left-0 right-0 bg-black border-b border-gray-800 shadow-lg">
           <nav className="container mx-auto px-4 py-3 flex flex-col space-y-3">
             <Link
               href="/services"
-              className="text-gray-600 hover:text-black transition-colors py-2"
+              className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Services
             </Link>
             <Link
               href="/bookings"
-              className="text-gray-600 hover:text-black transition-colors py-2"
+              className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Book Now
             </Link>
             <Link
               href="/contact"
-              className="text-gray-600 hover:text-black transition-colors py-2"
+              className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Contact
