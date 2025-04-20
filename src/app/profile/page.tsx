@@ -42,25 +42,49 @@ export default function ProfilePage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data, error } = await supabase
+      // First try to get the profile
+      let { data: profile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
 
-      if (error) throw error
+      // If profile doesn't exist, create it
+      if (fetchError && fetchError.code === 'PGRST116') {
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: user.id,
+            full_name: '',
+            phone: '',
+            avatar_url: null,
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single()
 
-      const profile = {
-        email: user.email || '',
-        full_name: data?.full_name || '',
-        phone: data?.phone || '',
-        avatar_url: data?.avatar_url || null
+        if (createError) {
+          throw new Error(`Failed to create profile: ${createError.message}`)
+        }
+
+        profile = newProfile
+      } else if (fetchError) {
+        throw fetchError
       }
 
-      setProfile(profile)
-      setFormData(profile)
+      // Set the profile data
+      const profileData = {
+        email: user.email || '',
+        full_name: profile?.full_name || '',
+        phone: profile?.phone || '',
+        avatar_url: profile?.avatar_url || null
+      }
+
+      setProfile(profileData)
+      setFormData(profileData)
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      console.error('Profile error:', error)
+      setError(error instanceof Error ? error.message : 'An error occurred while loading your profile')
     } finally {
       setLoading(false)
     }

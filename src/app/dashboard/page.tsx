@@ -49,7 +49,29 @@ export default function DashboardPage() {
           .single()
 
         if (profileError) {
-          setError(`Profile error: ${profileError.message}`)
+          if (profileError.code === 'PGRST116') {
+            // Profile doesn't exist, create it
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: user.id,
+                full_name: '',
+                updated_at: new Date().toISOString()
+              })
+              .select('full_name')
+              .single()
+
+            if (createError) {
+              setError(`Failed to create profile: ${createError.message}`)
+            } else {
+              setProfile({
+                email: user.email || '',
+                full_name: ''
+              })
+            }
+          } else {
+            setError(`Profile error: ${profileError.message}`)
+          }
         } else if (profileData) {
           setProfile({
             email: user.email || '',
