@@ -19,6 +19,11 @@ CREATE INDEX IF NOT EXISTS appointments_cal_event_uid_idx ON public.appointments
 -- Enable RLS
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Users can update their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Users can insert their own appointments" ON public.appointments;
+
 -- Create RLS policies
 CREATE POLICY "Users can view their own appointments"
     ON public.appointments FOR SELECT

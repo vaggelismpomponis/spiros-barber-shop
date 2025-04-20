@@ -9,6 +9,7 @@ import Image from 'next/image'
 interface Profile {
   avatar_url: string | null
   full_name: string | null
+  isAdmin?: boolean
 }
 
 export function UserMenu() {
@@ -16,6 +17,7 @@ export function UserMenu() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -25,9 +27,20 @@ export function UserMenu() {
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError) throw userError
+        console.log('Current user:', user?.email) // Debug log
         setUser(user)
 
         if (user) {
+          // Check if user is admin
+          const { data: adminData, error: adminError } = await supabase
+            .from('admins')
+            .select('*')
+            .eq('email', user.email)
+            .single()
+
+          console.log('Admin check result:', { adminData, adminError }) // Debug log
+          setIsAdmin(!!adminData)
+
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('avatar_url, full_name')
@@ -62,6 +75,7 @@ export function UserMenu() {
       await supabase.auth.signOut()
       setUser(null)
       setProfile(null)
+      setIsAdmin(false)
       setIsOpen(false)
       router.push('/')
     } catch (error) {
@@ -118,6 +132,7 @@ export function UserMenu() {
           <div className="px-4 py-2 border-b">
             <p className="text-sm font-medium text-gray-900">{profile?.full_name || 'User'}</p>
             <p className="text-sm text-gray-500 truncate">{user.email}</p>
+            {isAdmin && <p className="text-xs text-blue-600 mt-1">Admin</p>}
           </div>
           <Link
             href="/profile"
@@ -126,13 +141,15 @@ export function UserMenu() {
           >
             Profile Settings
           </Link>
-          <Link
-            href="/dashboard"
-            onClick={() => setIsOpen(false)}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Dashboard
-          </Link>
+          {isAdmin && (
+            <Link
+              href="/dashboard"
+              onClick={() => setIsOpen(false)}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Admin Dashboard
+            </Link>
+          )}
           <Link
             href="/bookings"
             onClick={() => setIsOpen(false)}

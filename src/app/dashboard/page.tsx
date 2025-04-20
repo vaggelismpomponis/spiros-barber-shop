@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 interface Profile {
   email: string
   full_name: string | null
+  isAdmin?: boolean
 }
 
 export default function DashboardPage() {
@@ -28,6 +29,19 @@ export default function DashboardPage() {
         }
         if (!user) {
           router.push('/auth/signin')
+          return
+        }
+
+        // Check if user is admin
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('email', user.email)
+          .single()
+
+        if (!adminData) {
+          // User is not an admin, redirect to home
+          router.push('/')
           return
         }
 
@@ -56,7 +70,8 @@ export default function DashboardPage() {
             } else {
               setProfile({
                 email: user.email || '',
-                full_name: ''
+                full_name: '',
+                isAdmin: true
               })
             }
           } else {
@@ -65,7 +80,8 @@ export default function DashboardPage() {
         } else if (profileData) {
           setProfile({
             email: user.email || '',
-            full_name: profileData.full_name
+            full_name: profileData.full_name,
+            isAdmin: true
           })
         }
       } catch (error) {
@@ -93,7 +109,7 @@ export default function DashboardPage() {
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <h1 className="text-2xl font-bold mb-6">
-              Welcome{profile?.full_name ? `, ${profile.full_name}` : ''}!
+              Admin Dashboard{profile?.full_name ? ` - ${profile.full_name}` : ''}
             </h1>
             
             {error && (
@@ -107,6 +123,12 @@ export default function DashboardPage() {
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="space-y-3">
+                  <button
+                    onClick={() => router.push('/dashboard/admins')}
+                    className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
+                  >
+                    Manage Admins
+                  </button>
                   <button
                     onClick={() => router.push('/bookings')}
                     className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"

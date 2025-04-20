@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 -- Enable RLS
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Anyone can insert contact messages" ON contact_messages;
+DROP POLICY IF EXISTS "Only authenticated users can view contact messages" ON contact_messages;
+
 -- Create policy to allow anyone to insert messages
 CREATE POLICY "Anyone can insert contact messages"
 ON contact_messages FOR INSERT
@@ -33,6 +37,9 @@ CREATE POLICY "Only authenticated users can view contact messages"
 ON contact_messages FOR SELECT
 TO authenticated
 USING (true);
+
+-- Drop existing trigger if it exists
+DROP TRIGGER IF EXISTS set_contact_messages_updated_at ON contact_messages;
 
 -- Create updated_at trigger
 CREATE TRIGGER set_contact_messages_updated_at
