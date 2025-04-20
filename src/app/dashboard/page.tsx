@@ -3,24 +3,14 @@
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
 
 interface Profile {
   email: string
   full_name: string | null
 }
 
-interface Appointment {
-  id: string
-  service_name: string
-  start_time: string
-  end_time: string
-  status: string
-}
-
 export default function DashboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -78,25 +68,6 @@ export default function DashboardPage() {
             full_name: profileData.full_name
           })
         }
-
-        // Fetch upcoming appointments
-        const now = new Date().toISOString()
-        console.log('Fetching appointments for user:', user.id)
-        const { data: appointmentsData, error: appointmentsError } = await supabase
-          .from('appointments')
-          .select('*')
-          .eq('user_id', user.id)
-          .in('status', ['confirmed'])
-          .gte('start_time', now)
-          .order('start_time', { ascending: true })
-
-        if (appointmentsError) {
-          setError(`Appointments error: ${appointmentsError.message}`)
-          console.error('Error fetching appointments:', appointmentsError)
-        } else {
-          console.log('Appointments found:', appointmentsData?.length || 0)
-          setAppointments(appointmentsData || [])
-        }
       } catch (error) {
         console.error('Error fetching data:', error)
         setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`)
@@ -107,14 +78,6 @@ export default function DashboardPage() {
 
     fetchData()
   }, [])
-
-  const formatAppointmentTime = (start: string, end: string) => {
-    const startDate = new Date(start)
-    const endDate = new Date(end)
-    const dateStr = format(startDate, 'MMM d, yyyy')
-    const timeStr = `${format(startDate, 'h:mm a')} - ${format(endDate, 'h:mm a')}`
-    return { dateStr, timeStr }
-  }
 
   if (loading) {
     return (
@@ -139,7 +102,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {/* Quick Actions */}
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
@@ -173,50 +136,6 @@ export default function DashboardPage() {
                     Create Test Appointment
                   </button>
                 </div>
-              </div>
-
-              {/* Upcoming Appointments */}
-              <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-4">
-                  Upcoming Appointments ({appointments.length})
-                </h2>
-                {appointments.length > 0 ? (
-                  <div className="space-y-4">
-                    {appointments.map((appointment) => {
-                      const { dateStr, timeStr } = formatAppointmentTime(
-                        appointment.start_time,
-                        appointment.end_time
-                      )
-                      return (
-                        <div
-                          key={appointment.id}
-                          className={`bg-white p-4 rounded-md shadow-sm border ${
-                            appointment.status === 'cancelled' 
-                              ? 'border-red-200 bg-red-50' 
-                              : 'border-gray-100'
-                          }`}
-                        >
-                          <h3 className="font-medium text-gray-900">
-                            {appointment.service_name}
-                          </h3>
-                          <p className="text-sm text-gray-500">{dateStr}</p>
-                          <p className="text-sm text-gray-500">{timeStr}</p>
-                          {appointment.status === 'cancelled' && (
-                            <p className="text-sm text-red-600 mt-2">Cancelled</p>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-sm">No upcoming appointments</p>
-                )}
-              </div>
-
-              {/* Recent Activity */}
-              <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-                <p className="text-gray-500 text-sm">No recent activity</p>
               </div>
             </div>
           </div>
