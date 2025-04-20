@@ -23,11 +23,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "src/app/api/webhooks/cal/route": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  }
+  ]
 } 
