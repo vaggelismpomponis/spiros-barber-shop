@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa'
 import dynamic from 'next/dynamic'
 
@@ -22,7 +21,6 @@ export default function ContactPage() {
   })
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const supabase = createClientComponentClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,19 +28,17 @@ export default function ContactPage() {
     setErrorMessage('')
 
     try {
-      const { error } = await supabase
-        .from('contact_messages')
-        .insert([
-          {
-            name: formData.name,
-            email: formData.email,
-            subject: formData.subject,
-            message: formData.message,
-            status: 'new'
-          }
-        ])
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error('Failed to send message')
+      }
 
       setStatus('success')
       setFormData({
