@@ -124,6 +124,12 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="space-y-3">
                   <button
+                    onClick={() => router.push('/dashboard/appointments')}
+                    className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
+                  >
+                    Manage Appointments
+                  </button>
+                  <button
                     onClick={() => router.push('/dashboard/admins')}
                     className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
@@ -140,22 +146,6 @@ export default function DashboardPage() {
                     className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300"
                   >
                     View Profile
-                  </button>
-                  <button
-                    onClick={() => {
-                      fetch('/api/test')
-                        .then(res => res.json())
-                        .then(data => {
-                          if (data.success) {
-                            window.location.reload()
-                          } else {
-                            console.error('Test appointment error:', data.error)
-                          }
-                        })
-                    }}
-                    className="w-full bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-600"
-                  >
-                    Create Test Appointment
                   </button>
                 </div>
               </div>

@@ -8,15 +8,18 @@ import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 
 interface Appointment {
-  id: string
+  id: number
   user_id: string
-  cal_event_uid: string
-  service_name: string
-  start_time: string
-  end_time: string
+  service_id: number
+  date: string
+  time: string
   status: string
-  created_at: string
-  updated_at?: string  // Made optional since it might be set by the database
+  notes?: string
+  service: {
+    name: string
+    duration: number
+    price: number
+  }
 }
 
 export default function BookingPage() {
@@ -68,14 +71,18 @@ export default function BookingPage() {
       console.log('Current user:', user)
       
       if (user) {
-        // First get all appointments
+        // First get all appointments with service details
         const { data, error } = await supabase
           .from('appointments')
-          .select('*')
+          .select(`
+            *,
+            service:services(name, duration, price)
+          `)
           .eq('user_id', user.id)
           .eq('status', 'confirmed')
-          .gte('start_time', new Date().toISOString())
-          .order('start_time', { ascending: true });
+          .gte('date', new Date().toISOString().split('T')[0])
+          .order('date', { ascending: true })
+          .order('time', { ascending: true });
 
         console.log('Fetched appointments:', data)
         console.log('Fetch error:', error)
@@ -83,13 +90,17 @@ export default function BookingPage() {
         if (error) {
           console.error('Error fetching appointments:', error)
         } else {
-          // Remove duplicates based on cal_event_uid
-          const uniqueAppointments = data ? 
-            data.filter((appointment, index, self) =>
-              index === self.findIndex((a) => a.cal_event_uid === appointment.cal_event_uid)
-            ) : [];
+          // Remove duplicates based on date, time, and service_id
+          const uniqueAppointments = data ? data.filter((appointment, index, self) =>
+            index === self.findIndex((a) => (
+              a.date === appointment.date &&
+              a.time === appointment.time &&
+              a.service_id === appointment.service_id
+            ))
+          ) : [];
           
-          setAppointments(uniqueAppointments)
+          console.log('Unique appointments:', uniqueAppointments);
+          setAppointments(uniqueAppointments);
         }
       }
     } catch (error) {
@@ -132,15 +143,63 @@ export default function BookingPage() {
 
               // Extract service name from the booking data
               const serviceName = booking.eventType?.title || 'Haircut Service'
+              console.log('Looking for service with name:', serviceName);
 
-              // Get start and end times from the booking object
+              // First, get all services to see what we're working with
+              const { data: allServices, error: servicesError } = await supabase
+                .from('services')
+                .select('id, name, category');
+
+              console.log('Available services:', allServices);
+              
+              if (servicesError) {
+                console.error('Error fetching services:', servicesError);
+                throw new Error(`Error fetching services: ${servicesError.message}`);
+              }
+
+              // Helper function to normalize strings for comparison
+              const normalizeString = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+              // Find the best matching service
+              let service = allServices?.find(s => {
+                const normalizedServiceName = normalizeString(serviceName);
+                const normalizedDbName = normalizeString(s.name);
+                
+                // Try exact match first
+                if (normalizedDbName === normalizedServiceName) {
+                  return true;
+                }
+
+                // If service name contains 'haircut', match with any haircut category service
+                if (normalizedServiceName.includes('haircut') && s.category === 'haircut') {
+                  return true;
+                }
+
+                // Check if the normalized names have significant overlap
+                return normalizedServiceName.includes(normalizedDbName) ||
+                       normalizedDbName.includes(normalizedServiceName);
+              });
+
+              if (!service) {
+                console.error('No matching service found. Available services:', 
+                  allServices?.map(s => ({name: s.name, category: s.category}))
+                );
+                // Default to Classic Haircut if no match found
+                const defaultService = allServices?.find(s => s.name === 'Classic Haircut');
+                if (!defaultService) {
+                  throw new Error(`No matching service found for: ${serviceName} and no default service available`);
+                }
+                console.log('Using default service:', defaultService);
+                service = defaultService;
+              }
+
+              console.log('Found matching service:', service);
+
+              // Get start time from the booking object
               const startTime = booking.startTime || booking.start_time;
-              const endTime = booking.endTime || booking.end_time;
 
-              console.log('Processing times:', { startTime, endTime });
-
-              if (!startTime || !endTime) {
-                throw new Error(`Invalid booking times - Start: ${startTime}, End: ${endTime}. Full booking data: ${JSON.stringify(booking, null, 2)}`);
+              if (!startTime) {
+                throw new Error(`Invalid booking time - Start: ${startTime}. Full booking data: ${JSON.stringify(booking, null, 2)}`);
               }
 
               // Function to safely parse date with multiple fallback methods
@@ -178,47 +237,27 @@ export default function BookingPage() {
                 throw new Error(`Unsupported date input type: ${typeof dateInput}`);
               };
 
-              // Try parsing both dates
+              // Parse the start date
               const startDate = parseDateSafely(startTime);
-              const endDate = parseDateSafely(endTime);
 
-              // Convert to ISO strings
-              const startTimeISO = startDate.toISOString();
-              const endTimeISO = endDate.toISOString();
-
-              console.log('Parsed dates:', {
-                startTimeISO,
-                endTimeISO,
-                startDate: startDate.toString(),
-                endDate: endDate.toString()
-              });
+              // Format date and time separately
+              const appointmentDate = format(startDate, 'yyyy-MM-dd');
+              const appointmentTime = format(startDate, 'HH:mm:ss');
 
               // Generate a unique event ID if not provided
-              const calEventUid = booking.uid || booking.id || crypto.randomUUID()
+              const calEventUid = booking.uid || booking.id || crypto.randomUUID();
 
               // Prepare appointment data with correct types
               const appointmentData = {
                 user_id: user.id,
-                service_name: serviceName,
+                service_id: service.id,
+                date: appointmentDate,
+                time: appointmentTime,
                 cal_event_uid: calEventUid,
-                start_time: startTimeISO,
-                end_time: endTimeISO,
-                status: 'confirmed',
-                created_at: new Date().toISOString()
-              }
+                status: 'confirmed'
+              };
 
-              console.log('Attempting to save appointment with data:', {
-                appointmentData,
-                validation: {
-                  hasUserId: !!appointmentData.user_id,
-                  userIdFormat: typeof appointmentData.user_id,
-                  hasStartTime: !!appointmentData.start_time,
-                  hasEndTime: !!appointmentData.end_time,
-                  startTimeFormat: typeof appointmentData.start_time,
-                  endTimeFormat: typeof appointmentData.end_time,
-                  status: appointmentData.status
-                }
-              });
+              console.log('Attempting to save appointment with data:', appointmentData);
 
               try {
                 // Check if appointment already exists
@@ -226,7 +265,9 @@ export default function BookingPage() {
                   .from('appointments')
                   .select()
                   .eq('user_id', user.id)
-                  .eq('cal_event_uid', calEventUid)
+                  .eq('date', appointmentDate)
+                  .eq('time', appointmentTime)
+                  .eq('service_id', service.id)
                   .single();
 
                 if (checkError && checkError.code !== 'PGRST116') { // PGRST116 means no rows found
@@ -259,12 +300,12 @@ export default function BookingPage() {
                   throw appointmentError;
                 }
 
-                console.log('Successfully saved appointment:', appointment)
+                console.log('Successfully saved appointment:', appointment);
                 // Refresh appointments immediately
-                await fetchAppointments()
+                await fetchAppointments();
                 
                 // Redirect to dashboard after successful booking
-                router.push('/dashboard?tab=appointments')
+                router.push('/dashboard?tab=appointments');
               } catch (error) {
                 console.error('Detailed appointment save error:', {
                   error,
@@ -311,12 +352,12 @@ export default function BookingPage() {
                 <div className="space-y-4">
                   {appointments.map((appointment) => (
                     <div key={appointment.id} className="border-l-4 border-black pl-4 py-2">
-                      <p className="font-medium">{appointment.service_name}</p>
+                      <p className="font-medium">{appointment.service?.name || 'Unknown Service'}</p>
                       <p className="text-sm text-gray-600">
-                        {format(new Date(appointment.start_time), 'PPP')}
+                        {format(new Date(`${appointment.date}T00:00:00`), 'PPP')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {format(new Date(appointment.start_time), 'p')} - {format(new Date(appointment.end_time), 'p')}
+                        {appointment.time.slice(0, 5)}
                       </p>
                     </div>
                   ))}

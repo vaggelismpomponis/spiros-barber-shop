@@ -40,9 +40,23 @@ async function applyMigration(filePath: string) {
       }
       // If direct execution fails, it might be because the function doesn't exist yet
       if (directError.message.includes('function "apply_migration" does not exist')) {
-        // Try to execute the SQL directly if it's the migration function creation
-        const { error } = await supabase.sql(sql)
+        // Create and execute the migration function
+        const createFunctionSql = `
+          CREATE OR REPLACE FUNCTION apply_migration(migration_sql text)
+          RETURNS void AS $$
+          BEGIN
+            EXECUTE migration_sql;
+          END;
+          $$ LANGUAGE plpgsql SECURITY DEFINER;
+        `;
+        
+        const { error } = await supabase.rpc('apply_migration', { migration_sql: createFunctionSql })
         if (error) throw error
+        
+        // Now try applying the original migration again
+        const { error: retryError } = await supabase.rpc('apply_migration', { migration_sql: sql })
+        if (retryError) throw retryError
+        
         console.log(`Successfully created migration function: ${path.basename(filePath)}`)
         return
       }
