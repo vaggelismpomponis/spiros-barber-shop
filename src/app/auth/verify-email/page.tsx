@@ -17,13 +17,13 @@ export default function VerifyEmail() {
           <div className="space-y-6">
             <p className="text-center text-sm text-gray-600">
               Didn't receive an email?{' '}
-              <Link href="/auth/signup" className="font-medium text-black hover:text-gray-800">
+              <Link href="/auth/signup" className="font-medium text-[#1A1A1A] hover:text-gray-800">
                 Try signing up again
               </Link>
             </p>
             <p className="text-center text-sm text-gray-600">
               Or{' '}
-              <Link href="/auth/signin" className="font-medium text-black hover:text-gray-800">
+              <Link href="/auth/signin" className="font-medium text-[#1A1A1A] hover:text-gray-800">
                 return to sign in
               </Link>
             </p>

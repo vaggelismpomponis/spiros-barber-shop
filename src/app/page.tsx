@@ -13,7 +13,7 @@ export default function Home() {
               backgroundRepeat: 'no-repeat',
             }}
           >
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 bg-[#1A1A1A]/60" />
           </div>
         </div>
 
@@ -32,7 +32,7 @@ export default function Home() {
               <a
                 href="/bookings"
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 sm:px-8 sm:py-4 
-                         bg-white text-black text-base sm:text-lg font-semibold rounded-lg 
+                         bg-white text-[#1A1A1A] text-base sm:text-lg font-semibold rounded-lg 
                          hover:bg-gray-100 transition-colors duration-300 min-w-[160px]"
               >
                 Book Now

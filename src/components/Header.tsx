@@ -34,7 +34,7 @@ export function Header() {
   }, [])
 
   return (
-    <header className="w-full border-b border-gray-800 bg-black relative z-[40]">
+    <header className="w-full border-b border-gray-800 bg-[#1A1A1A] relative z-[40]">
       {/* Top header section for auth */}
       <div className="w-full bg-gray-50 py-2 border-b relative z-50">
         <div className="container mx-auto px-4 flex justify-end">
@@ -95,7 +95,7 @@ export function Header() {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <div className="md:hidden absolute top-[calc(4rem+2.5rem)] left-0 right-0 bg-black border-b border-gray-800 shadow-lg z-20">
+        <div className="md:hidden absolute top-[calc(4rem+2.5rem)] left-0 right-0 bg-[#1A1A1A] border-b border-gray-800 shadow-lg z-20">
           <nav className="container mx-auto px-4 py-3 flex flex-col space-y-3">
             <Link
               href="/services"

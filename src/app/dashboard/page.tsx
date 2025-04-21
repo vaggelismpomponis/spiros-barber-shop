@@ -113,13 +113,13 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   <button
                     onClick={() => router.push('/dashboard/admins')}
-                    className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
+                    className="w-full bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
                     Manage Admins
                   </button>
                   <button
                     onClick={() => router.push('/bookings')}
-                    className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
+                    className="w-full bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
                     Book Appointment
                   </button>
