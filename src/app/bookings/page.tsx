@@ -422,12 +422,12 @@ export default function BookingPage() {
         // First, cancel the booking in Cal.com through our API route
         const headers = {
           'Content-Type': 'application/json',
-          'apiKey': calApiKey
+          'apikey': calApiKey
         };
         console.log('Full request details:', {
           url: '/api/bookings/cancel',
           method: 'POST',
-          headers: { ...headers, apiKey: '[REDACTED]' },
+          headers: { ...headers, apikey: '[REDACTED]' },
           body: { calEventUid }
         });
 

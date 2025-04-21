@@ -23,28 +23,143 @@ interface Appointment {
   cal_event_uid?: string
 }
 
+// Admin protection wrapper component
+const AdminProtected = ({ children }: { children: React.ReactNode }) => {
+  const supabase = createClientComponentClient()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          setError('You must be logged in to access this page')
+          return
+        }
+
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('email', session.user.email)
+          .single()
+
+        if (adminError || !adminData) {
+          setError('You do not have permission to access this page')
+          return
+        }
+
+        setIsAdmin(true)
+      } catch (error) {
+        console.error('Error checking admin status:', error)
+        setError('An error occurred while checking permissions')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    checkAdminStatus()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1A1A1A]"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-8 py-6 rounded-lg max-w-md text-center">
+          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return null
+  }
+
+  return <>{children}</>
+}
+
 export default function ManageAppointmentsPage() {
   const supabase = createClientComponentClient()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const [updatingAppointmentId, setUpdatingAppointmentId] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Debug function to check admins table
+  const checkAdminsTable = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current user session:', {
+        email: session?.user?.email,
+        id: session?.user?.id
+      });
+
+      const { data: admins, error } = await supabase
+        .from('admins')
+        .select('*');
+
+      console.log('Admins table contents:', {
+        admins,
+        error,
+        count: admins?.length || 0
+      });
+
+      // Check specific admin
+      if (session?.user?.email) {
+        const { data: specificAdmin, error: specificError } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('email', session.user.email)
+          .single();
+
+        console.log('Specific admin check:', {
+          email: session.user.email,
+          admin: specificAdmin,
+          error: specificError
+        });
+      }
+    } catch (error) {
+      console.error('Error checking admins table:', error);
+    }
+  };
+
+  // Call the check function on mount
+  useEffect(() => {
+    checkAdminsTable();
+  }, []);
 
   // Fetch all appointments (not just user-specific ones)
   const fetchAppointments = async () => {
     try {
-      console.log('Starting fetchAppointments...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      if (sessionError) {
-        console.error('Session error:', sessionError);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log('No session found');
         return;
       }
-      
-      // Check if user is admin
-      if (session?.user?.email !== process.env.NEXT_PUBLIC_ADMIN_EMAIL) {
-        console.error('Unauthorized access attempt');
-        toast.error('Unauthorized access');
+
+      // Add debug check here
+      await checkAdminsTable();
+
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('email', session?.user?.email)
+        .single();
+
+      if (adminError || !adminData) {
+        console.error('Admin check error:', adminError);
+        setError('Unauthorized access');
         return;
       }
 
@@ -135,12 +250,12 @@ export default function ManageAppointmentsPage() {
         // First, cancel the booking in Cal.com through our API route
         const headers = {
           'Content-Type': 'application/json',
-          'apiKey': calApiKey
+          'apikey': calApiKey
         };
         console.log('Full request details:', {
           url: '/api/bookings/cancel',
           method: 'POST',
-          headers: { ...headers, apiKey: '[REDACTED]' },
+          headers: { ...headers, apikey: '[REDACTED]' },
           body: { calEventUid }
         });
 
@@ -192,133 +307,149 @@ export default function ManageAppointmentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Manage Appointments</h1>
+    <AdminProtected>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Manage Appointments</h1>
         
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">All Appointments</h2>
-            <button
-              onClick={() => fetchAppointments()}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              Refresh
-            </button>
+        {error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            {error}
           </div>
+        ) : (
+          <>
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setShowAll(!showAll)}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                {showAll ? 'Show Active Only' : 'Show All'}
+              </button>
+            </div>
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold">All Appointments</h2>
+                <button
+                  onClick={() => fetchAppointments()}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1A1A]"></div>
-            </div>
-          ) : appointments.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-gray-500">No appointments found</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {Object.entries(
-                (showAll ? appointments : appointments.slice(0, 10)).reduce((groups: { [key: string]: Appointment[] }, appointment) => {
-                  const date = appointment.date;
-                  if (!groups[date]) {
-                    groups[date] = [];
-                  }
-                  groups[date].push(appointment);
-                  return groups;
-                }, {})
-              ).map(([date, dateAppointments]) => (
-                <div key={date} className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
-                    {format(new Date(date), 'EEEE, MMMM d, yyyy')}
-                  </h3>
-                  {dateAppointments
-                    .sort((a, b) => a.time.localeCompare(b.time))
-                    .map((appointment) => (
-                    <div 
-                      key={appointment.id} 
-                      className={`border-l-4 pl-4 py-3 ${
-                        appointment.status === 'confirmed' 
-                          ? 'border-green-500 bg-green-50' 
-                          : appointment.status === 'completed'
-                          ? 'border-blue-500 bg-blue-50'
-                          : appointment.status === 'cancelled'
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-yellow-500 bg-yellow-50'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {appointment.service?.name || 'Unknown Service'}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
-                          </p>
-                          {appointment.service?.duration && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Duration: {appointment.service.duration} minutes
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full mb-2 ${
-                            appointment.status === 'confirmed'
-                              ? 'bg-green-100 text-green-800'
-                              : appointment.status === 'completed'
-                              ? 'bg-blue-100 text-blue-800'
-                              : appointment.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                          </span>
-                          
-                          {/* Action buttons */}
-                          {appointment.status === 'confirmed' && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => updateAppointmentStatus(appointment.id, 'completed', appointment.cal_event_uid || null)}
-                                disabled={updatingAppointmentId === appointment.id}
-                                className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                              >
-                                Complete
-                              </button>
-                              <button
-                                onClick={() => updateAppointmentStatus(appointment.id, 'cancelled', appointment.cal_event_uid || null)}
-                                disabled={updatingAppointmentId === appointment.id}
-                                className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
-                              >
-                                Cancel
-                              </button>
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1A1A]"></div>
+                </div>
+              ) : appointments.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-gray-500">No appointments found</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {Object.entries(
+                    (showAll ? appointments : appointments.slice(0, 10)).reduce((groups: { [key: string]: Appointment[] }, appointment) => {
+                      const date = appointment.date;
+                      if (!groups[date]) {
+                        groups[date] = [];
+                      }
+                      groups[date].push(appointment);
+                      return groups;
+                    }, {})
+                  ).map(([date, dateAppointments]) => (
+                    <div key={date} className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-700 border-b pb-2">
+                        {format(new Date(date), 'EEEE, MMMM d, yyyy')}
+                      </h3>
+                      {dateAppointments
+                        .sort((a, b) => a.time.localeCompare(b.time))
+                        .map((appointment) => (
+                          <div 
+                            key={appointment.id} 
+                            className={`border-l-4 pl-4 py-3 ${
+                              appointment.status === 'confirmed' 
+                                ? 'border-green-500 bg-green-50' 
+                                : appointment.status === 'completed'
+                                ? 'border-blue-500 bg-blue-50'
+                                : appointment.status === 'cancelled'
+                                ? 'border-red-500 bg-red-50'
+                                : 'border-yellow-500 bg-yellow-50'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {appointment.service?.name || 'Unknown Service'}
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                  {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
+                                </p>
+                                {appointment.service?.duration && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Duration: {appointment.service.duration} minutes
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span className={`text-xs font-medium px-2 py-1 rounded-full mb-2 ${
+                                  appointment.status === 'confirmed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : appointment.status === 'completed'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : appointment.status === 'cancelled'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                                </span>
+                                
+                                {/* Action buttons */}
+                                {appointment.status === 'confirmed' && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => updateAppointmentStatus(appointment.id, 'completed', appointment.cal_event_uid || null)}
+                                      disabled={updatingAppointmentId === appointment.id}
+                                      className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    >
+                                      Complete
+                                    </button>
+                                    <button
+                                      onClick={() => updateAppointmentStatus(appointment.id, 'cancelled', appointment.cal_event_uid || null)}
+                                      disabled={updatingAppointmentId === appointment.id}
+                                      className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </div>
+                          </div>
+                        ))}
                     </div>
                   ))}
+                  
+                  {!showAll && appointments.length > 10 && (
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="w-full mt-4 py-2 px-4 bg-[#1A1A1A] text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+                    >
+                      Show {appointments.length - 10} More Appointments
+                    </button>
+                  )}
+                  {showAll && appointments.length > 10 && (
+                    <button
+                      onClick={() => setShowAll(false)}
+                      className="w-full mt-4 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
+                    >
+                      Show Less
+                    </button>
+                  )}
                 </div>
-              ))}
-              
-              {!showAll && appointments.length > 10 && (
-                <button
-                  onClick={() => setShowAll(true)}
-                  className="w-full mt-4 py-2 px-4 bg-[#1A1A1A] text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
-                >
-                  Show {appointments.length - 10} More Appointments
-                </button>
-              )}
-              {showAll && appointments.length > 10 && (
-                <button
-                  onClick={() => setShowAll(false)}
-                  className="w-full mt-4 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
-                >
-                  Show Less
-                </button>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
-    </div>
+    </AdminProtected>
   );
 } 
