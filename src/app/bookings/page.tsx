@@ -33,6 +33,7 @@ interface Appointment {
   time: string
   status: string
   service: Service
+  cal_event_uid?: string
 }
 
 export default function BookingPage() {
@@ -41,6 +42,7 @@ export default function BookingPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [showAll, setShowAll] = useState(false)
+  const [updatingAppointmentId, setUpdatingAppointmentId] = useState<number | null>(null)
 
   // Function to inspect table structure
   const inspectTableStructure = async () => {
@@ -114,6 +116,7 @@ export default function BookingPage() {
           date,
           time,
           status,
+          cal_event_uid,
           created_at,
           service:services!inner (
             id,
@@ -123,7 +126,6 @@ export default function BookingPage() {
           )
         `)
         .eq('user_id', session.user.id)
-        .not('status', 'eq', 'cancelled')
         .gte('date', currentDate)
         .order('created_at', { ascending: false }); // Sort by creation date, newest first
 
@@ -402,6 +404,80 @@ export default function BookingPage() {
     })()
   }, [router])
 
+  // Function to update appointment status
+  const updateAppointmentStatus = async (appointmentId: number, newStatus: string, calEventUid: string | null) => {
+    try {
+      setUpdatingAppointmentId(appointmentId);
+      const calApiKey = process.env.NEXT_PUBLIC_CAL_API_KEY;
+      
+      if (newStatus === 'cancelled' && calEventUid) {
+        console.log('Cal API Key:', calApiKey); // Log the actual key value
+        console.log('Cal Event UID:', calEventUid);
+        
+        if (!calApiKey) {
+          toast.error('Cal.com API key not found. Please check your environment variables.');
+          return;
+        }
+
+        // First, cancel the booking in Cal.com through our API route
+        const headers = {
+          'Content-Type': 'application/json',
+          'apiKey': calApiKey
+        };
+        console.log('Full request details:', {
+          url: '/api/bookings/cancel',
+          method: 'POST',
+          headers: { ...headers, apiKey: '[REDACTED]' },
+          body: { calEventUid }
+        });
+
+        const cancelResponse = await fetch('/api/bookings/cancel', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ calEventUid })
+        });
+
+        console.log('Cancel response status:', cancelResponse.status);
+        const responseData = await cancelResponse.json();
+        console.log('Cancel response data:', responseData);
+
+        if (!cancelResponse.ok) {
+          console.error('Failed to cancel Cal.com booking:', responseData);
+          toast.error(responseData.error || 'Failed to cancel Cal.com booking. Please try again.');
+          return;
+        }
+      }
+
+      // Update appointment in our database
+      const { data: updatedAppointment, error } = await supabase
+        .from('appointments')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', appointmentId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Updated appointment in database:', updatedAppointment);
+
+      // Show success message
+      toast.success(`Appointment ${newStatus} successfully`);
+      
+      // Refresh appointments list
+      await fetchAppointments();
+    } catch (error) {
+      console.error('Error updating appointment:', error);
+      toast.error('Failed to update appointment status');
+    } finally {
+      setUpdatingAppointmentId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <main className="flex-1 container mx-auto px-4 py-8">
@@ -429,6 +505,10 @@ export default function BookingPage() {
                       className={`border-l-4 pl-4 py-3 ${
                         appointment.status === 'confirmed' 
                           ? 'border-green-500 bg-green-50' 
+                          : appointment.status === 'completed'
+                          ? 'border-blue-500 bg-blue-50'
+                          : appointment.status === 'cancelled'
+                          ? 'border-red-500 bg-red-50'
                           : 'border-yellow-500 bg-yellow-50'
                       }`}
                     >
@@ -439,6 +519,10 @@ export default function BookingPage() {
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                           appointment.status === 'confirmed'
                             ? 'bg-green-100 text-green-800'
+                            : appointment.status === 'completed'
+                            ? 'bg-blue-100 text-blue-800'
+                            : appointment.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
@@ -454,6 +538,26 @@ export default function BookingPage() {
                         <p className="text-xs text-gray-500 mt-1">
                           Duration: {appointment.service.duration} minutes
                         </p>
+                      )}
+                      
+                      {/* Only show action buttons for confirmed appointments */}
+                      {appointment.status === 'confirmed' && (
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            onClick={() => updateAppointmentStatus(appointment.id, 'completed', appointment.cal_event_uid || null)}
+                            disabled={updatingAppointmentId === appointment.id}
+                            className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          >
+                            Complete
+                          </button>
+                          <button
+                            onClick={() => updateAppointmentStatus(appointment.id, 'cancelled', appointment.cal_event_uid || null)}
+                            disabled={updatingAppointmentId === appointment.id}
+                            className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
