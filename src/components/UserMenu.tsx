@@ -22,20 +22,22 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const menuRef = useRef<HTMLDivElement>(null)
   const supabase = createClientComponentClient()
   const router = useRouter()
 
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!isAuthenticated) {
-        setUser(null)
-        setProfile(null)
-        setIsAdmin(false)
-        return
-      }
-
+      setIsLoading(true)
       try {
+        if (!isAuthenticated) {
+          setUser(null)
+          setProfile(null)
+          setIsAdmin(false)
+          return
+        }
+
         // Get current session
         const { data: { user: currentUser } } = await supabase.auth.getUser()
         if (!currentUser) return
@@ -61,6 +63,8 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
         setProfile(profileData)
       } catch (error) {
         console.error('Error fetching user data:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -86,6 +90,12 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
     } catch (error) {
       console.error('Error signing out:', error)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse"></div>
+    )
   }
 
   if (!isAuthenticated) {

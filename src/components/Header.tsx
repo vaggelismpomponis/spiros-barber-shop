@@ -9,14 +9,19 @@ import { useRouter } from 'next/navigation'
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const supabase = createClientComponentClient()
   const router = useRouter()
 
   useEffect(() => {
     // Check initial auth state
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setIsAuthenticated(!!session)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setIsAuthenticated(!!session)
+      } finally {
+        setIsLoading(false)
+      }
     }
     checkUser()
 
@@ -35,10 +40,10 @@ export function Header() {
 
   return (
     <header className="w-full border-b border-gray-800 bg-[#1A1A1A] relative z-[40]">
-      {/* Top header section for auth */}
-      <div className="w-full bg-gray-50 py-2 border-b relative z-50">
+      {/* Top header section for auth - Only visible on mobile */}
+      <div className="md:hidden w-full bg-gray-50 py-2 border-b relative z-50">
         <div className="container mx-auto px-4 flex justify-end">
-          <UserMenu isAuthenticated={isAuthenticated} />
+          {!isLoading && <UserMenu isAuthenticated={isAuthenticated} />}
         </div>
       </div>
 
@@ -48,18 +53,24 @@ export function Header() {
           Barbershop
         </Link>
         
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link href="/services" className="text-gray-300 hover:text-white transition-colors">
-            Services
-          </Link>
-          <Link href="/bookings" className="text-gray-300 hover:text-white transition-colors">
-            Book Now
-          </Link>
-          <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
-            Contact
-          </Link>
-        </nav>
+        {/* Desktop Navigation with Profile */}
+        <div className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-6">
+            <Link href="/services" className="text-gray-300 hover:text-white transition-colors">
+              Services
+            </Link>
+            <Link href="/bookings" className="text-gray-300 hover:text-white transition-colors">
+              Book Now
+            </Link>
+            <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+              Contact
+            </Link>
+          </nav>
+          {/* Desktop Profile Menu */}
+          <div className="ml-6 border-l border-gray-700 pl-6">
+            {!isLoading && <UserMenu isAuthenticated={isAuthenticated} />}
+          </div>
+        </div>
 
         {/* Mobile Menu Button */}
         <button
