@@ -88,7 +88,7 @@ export default function ServicesPage() {
             onClick={() => setSelectedCategory('all')}
             className={`px-4 py-2 rounded-md text-sm font-medium ${
               selectedCategory === 'all'
-                ? 'bg-black text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -98,7 +98,7 @@ export default function ServicesPage() {
             onClick={() => setSelectedCategory('haircut')}
             className={`px-4 py-2 rounded-md text-sm font-medium ${
               selectedCategory === 'haircut'
-                ? 'bg-black text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -108,7 +108,7 @@ export default function ServicesPage() {
             onClick={() => setSelectedCategory('beard')}
             className={`px-4 py-2 rounded-md text-sm font-medium ${
               selectedCategory === 'beard'
-                ? 'bg-black text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -118,7 +118,7 @@ export default function ServicesPage() {
             onClick={() => setSelectedCategory('combo')}
             className={`px-4 py-2 rounded-md text-sm font-medium ${
               selectedCategory === 'combo'
-                ? 'bg-black text-white'
+                ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
@@ -153,7 +153,7 @@ export default function ServicesPage() {
                   </span>
                   <Link
                     href="/bookings"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1A1A1A] hover:bg-gray-800"
                   >
                     Book Now
                   </Link>
