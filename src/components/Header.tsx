@@ -1,18 +1,44 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { UserMenu } from './UserMenu'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const supabase = createClientComponentClient()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Check initial auth state
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      setIsAuthenticated(!!session)
+    }
+    checkUser()
+
+    // Subscribe to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session)
+      if (event === 'SIGNED_IN') {
+        router.refresh()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
 
   return (
     <header className="w-full border-b border-gray-800 bg-black relative z-50">
       {/* Top header section for auth */}
       <div className="w-full bg-gray-50 py-2 border-b">
         <div className="container mx-auto px-4 flex justify-end">
-          <UserMenu />
+          <UserMenu isAuthenticated={isAuthenticated} />
         </div>
       </div>
 

@@ -2,64 +2,72 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { User } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 interface Profile {
-  avatar_url: string | null
+  id: string
   full_name: string | null
-  isAdmin?: boolean
+  avatar_url: string | null
 }
 
-export function UserMenu() {
+interface UserMenuProps {
+  isAuthenticated: boolean
+}
+
+export function UserMenu({ isAuthenticated }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
   const supabase = createClientComponentClient()
+  const router = useRouter()
 
   useEffect(() => {
-    const fetchUserAndProfile = async () => {
+    const fetchUserData = async () => {
+      if (!isAuthenticated) {
+        setUser(null)
+        setProfile(null)
+        setIsAdmin(false)
+        return
+      }
+
       try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError) throw userError
-        console.log('Current user:', user?.email) // Debug log
-        setUser(user)
+        // Get current session
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        if (!currentUser) return
 
-        if (user) {
-          // Check if user is admin
-          const { data: adminData, error: adminError } = await supabase
-            .from('admins')
-            .select('*')
-            .eq('email', user.email)
-            .single()
+        setUser(currentUser)
 
-          console.log('Admin check result:', { adminData, adminError }) // Debug log
-          setIsAdmin(!!adminData)
+        // Check if admin
+        const { data: adminData } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('email', currentUser.email)
+          .single()
+        
+        setIsAdmin(!!adminData)
 
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('avatar_url, full_name')
-            .eq('id', user.id)
-            .single()
-          
-          if (profileError) throw profileError
-          setProfile(profile)
-        }
+        // Get profile data
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single()
+
+        setProfile(profileData)
       } catch (error) {
-        console.error('Error fetching user or profile:', error)
-      } finally {
-        setLoading(false)
+        console.error('Error fetching user data:', error)
       }
     }
 
-    fetchUserAndProfile()
+    fetchUserData()
+  }, [isAuthenticated])
 
-    // Close menu when clicking outside
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsOpen(false)
@@ -73,34 +81,27 @@ export function UserMenu() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      setIsAdmin(false)
-      setIsOpen(false)
       router.push('/')
+      router.refresh()
     } catch (error) {
       console.error('Error signing out:', error)
     }
   }
 
-  if (loading) {
-    return <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
-  }
-
-  if (!user) {
+  if (!isAuthenticated) {
     return (
-      <div className="flex items-center gap-4">
+      <div className="flex items-center space-x-4">
         <Link
           href="/auth/signin"
           className="text-sm font-medium text-gray-700 hover:text-gray-900"
         >
-          Sign In
+          Sign in
         </Link>
         <Link
           href="/auth/signup"
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800"
+          className="text-sm font-medium text-white bg-black px-4 py-2 rounded-md hover:bg-gray-800"
         >
-          Sign Up
+          Sign up
         </Link>
       </div>
     )
@@ -122,7 +123,7 @@ export function UserMenu() {
               className="object-cover w-full h-full"
             />
           ) : (
-            user.email?.[0].toUpperCase() || 'U'
+            user?.email?.[0].toUpperCase() || 'U'
           )}
         </div>
       </button>
@@ -131,7 +132,7 @@ export function UserMenu() {
         <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5">
           <div className="px-4 py-2 border-b">
             <p className="text-sm font-medium text-gray-900">{profile?.full_name || 'User'}</p>
-            <p className="text-sm text-gray-500 truncate">{user.email}</p>
+            <p className="text-sm text-gray-500 truncate">{user?.email}</p>
             {isAdmin && <p className="text-xs text-blue-600 mt-1">Admin</p>}
           </div>
           <Link
@@ -159,9 +160,9 @@ export function UserMenu() {
           </Link>
           <button
             onClick={handleSignOut}
-            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 font-medium"
+            className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
           >
-            Sign Out
+            Sign out
           </button>
         </div>
       )}
