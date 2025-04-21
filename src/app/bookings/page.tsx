@@ -40,6 +40,7 @@ export default function BookingPage() {
   const supabase = createClientComponentClient()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
 
   // Function to inspect table structure
   const inspectTableStructure = async () => {
@@ -113,6 +114,7 @@ export default function BookingPage() {
           date,
           time,
           status,
+          created_at,
           service:services!inner (
             id,
             name,
@@ -123,8 +125,7 @@ export default function BookingPage() {
         .eq('user_id', session.user.id)
         .not('status', 'eq', 'cancelled')
         .gte('date', currentDate)
-        .order('date', { ascending: true })
-        .order('time', { ascending: true });
+        .order('created_at', { ascending: false }); // Sort by creation date, newest first
 
       console.log('Raw appointments from DB:', appointments);
 
@@ -413,7 +414,7 @@ export default function BookingPage() {
               <h2 className="text-xl font-semibold mb-4">Your Upcoming Appointments</h2>
               {loading ? (
                 <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1A1A]"></div>
                 </div>
               ) : appointments.length === 0 ? (
                 <div className="text-center py-6">
@@ -422,7 +423,7 @@ export default function BookingPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {appointments.map((appointment) => (
+                  {(showAll ? appointments : appointments.slice(0, 4)).map((appointment) => (
                     <div 
                       key={appointment.id} 
                       className={`border-l-4 pl-4 py-3 ${
@@ -456,6 +457,22 @@ export default function BookingPage() {
                       )}
                     </div>
                   ))}
+                  {!showAll && appointments.length > 4 && (
+                    <button
+                      onClick={() => setShowAll(true)}
+                      className="w-full mt-4 py-2 px-4 bg-[#1A1A1A] text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
+                    >
+                      Show {appointments.length - 4} More Appointments
+                    </button>
+                  )}
+                  {showAll && appointments.length > 4 && (
+                    <button
+                      onClick={() => setShowAll(false)}
+                      className="w-full mt-4 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
+                    >
+                      Show Less
+                    </button>
+                  )}
                 </div>
               )}
             </div>
