@@ -44,6 +44,102 @@ CREATE TRIGGER set_profiles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION set_updated_at(); 
 
+-- Running migration: 20240319_create_appointments.sql
+-- Create appointments table
+CREATE TABLE IF NOT EXISTS appointments (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    service_id BIGINT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can create their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can update their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can delete their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can view all appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can manage all appointments" ON appointments;
+
+-- Create policies for regular users
+CREATE POLICY "Users can view their own appointments"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1 FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "Users can create their own appointments"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own appointments"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1 FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1 FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "Users can delete their own appointments"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1 FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON appointments(date, time);
+
+-- Create updated_at trigger function if it doesn't exist
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = timezone('utc'::text, now());
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS handle_updated_at ON appointments;
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at(); 
+
 -- Running migration: 20240320_add_avatar_url.sql
 -- Add avatar_url column to profiles table if it doesn't exist
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
@@ -97,19 +193,19 @@ USING (bucket_id = 'profile-images');
 CREATE TABLE IF NOT EXISTS public.appointments (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    cal_event_uid TEXT NOT NULL,
-    service_name TEXT NOT NULL,
-    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    status TEXT NOT NULL DEFAULT 'confirmed',
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    cal_event_uid TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON public.appointments(user_id);
-CREATE INDEX IF NOT EXISTS appointments_start_time_idx ON public.appointments(start_time);
-CREATE INDEX IF NOT EXISTS appointments_cal_event_uid_idx ON public.appointments(cal_event_uid);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON public.appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON public.appointments(date, time);
 
 -- Enable RLS
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
@@ -122,18 +218,39 @@ DROP POLICY IF EXISTS "Users can insert their own appointments" ON public.appoin
 -- Create RLS policies
 CREATE POLICY "Users can view their own appointments"
     ON public.appointments FOR SELECT
-    USING (auth.uid() = user_id);
+    USING (
+        auth.uid() = user_id
+        OR
+        EXISTS (
+            SELECT 1 FROM admins
+            WHERE admins.email = auth.jwt()->>'email'
+        )
+    );
 
 CREATE POLICY "Users can update their own appointments"
     ON public.appointments FOR UPDATE
-    USING (auth.uid() = user_id);
+    USING (
+        auth.uid() = user_id
+        OR
+        EXISTS (
+            SELECT 1 FROM admins
+            WHERE admins.email = auth.jwt()->>'email'
+        )
+    );
 
 CREATE POLICY "Users can insert their own appointments"
     ON public.appointments FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (
+        auth.uid() = user_id
+        OR
+        EXISTS (
+            SELECT 1 FROM admins
+            WHERE admins.email = auth.jwt()->>'email'
+        )
+    );
 
 -- Create updated_at trigger function if it doesn't exist
-CREATE OR REPLACE FUNCTION public.set_updated_at()
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = TIMEZONE('utc'::text, NOW());
@@ -146,7 +263,7 @@ DROP TRIGGER IF EXISTS set_appointments_updated_at ON public.appointments;
 CREATE TRIGGER set_appointments_updated_at
     BEFORE UPDATE ON public.appointments
     FOR EACH ROW
-    EXECUTE FUNCTION public.set_updated_at(); 
+    EXECUTE FUNCTION public.handle_updated_at(); 
 
 -- Running migration: 20240321_create_contact_messages.sql
 -- Create trigger function for updating timestamps
@@ -197,6 +314,117 @@ CREATE TRIGGER set_contact_messages_updated_at
 BEFORE UPDATE ON contact_messages
 FOR EACH ROW
 EXECUTE FUNCTION trigger_set_timestamp(); 
+
+-- Running migration: 20240321_create_services.sql
+-- Create services table
+CREATE TABLE IF NOT EXISTS public.services (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    duration INTEGER NOT NULL, -- duration in minutes
+    price DECIMAL(10,2) NOT NULL,
+    category TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Everyone can view services" ON public.services;
+DROP POLICY IF EXISTS "Only admins can manage services" ON public.services;
+
+-- Create RLS policies
+CREATE POLICY "Everyone can view services"
+    ON public.services FOR SELECT
+    TO public
+    USING (true);
+
+CREATE POLICY "Only admins can manage services"
+    ON public.services FOR ALL
+    TO authenticated
+    USING (public.is_admin(auth.jwt() ->> 'email'));
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS set_services_updated_at ON public.services;
+CREATE TRIGGER set_services_updated_at
+    BEFORE UPDATE ON public.services
+    FOR EACH ROW
+    EXECUTE FUNCTION public.set_updated_at();
+
+-- Insert initial services
+INSERT INTO public.services (name, description, duration, price, category) VALUES
+    ('Classic Haircut', 'Traditional haircut with clippers and scissors, includes hot towel and styling', 30, 25.00, 'haircut'),
+    ('Beard Trim', 'Professional beard trimming and shaping with hot towel treatment', 20, 15.00, 'beard'),
+    ('Haircut & Beard Combo', 'Complete grooming package with haircut and beard trim', 45, 35.00, 'combo'),
+    ('Premium Fade', 'Precision fade haircut with detailed line-up and styling', 45, 30.00, 'haircut'),
+    ('Royal Shave', 'Traditional straight razor shave with hot towel and facial massage', 30, 25.00, 'beard'),
+    ('VIP Package', 'Premium haircut, beard trim, facial treatment, and head massage', 60, 50.00, 'combo')
+ON CONFLICT (id) DO NOTHING; 
+
+-- Running migration: 20240321_update_appointments.sql
+-- Drop and recreate appointments table with proper references
+DROP TABLE IF EXISTS public.appointments CASCADE;
+CREATE TABLE IF NOT EXISTS public.appointments (
+    id SERIAL PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES public.services(id) ON DELETE RESTRICT,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    cal_event_uid TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'confirmed',
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Add indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON public.appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_profile_id_idx ON public.appointments(profile_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON public.appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_idx ON public.appointments(date);
+
+-- Enable RLS
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Users can update their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Users can insert their own appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Admins can view all appointments" ON public.appointments;
+
+-- Create RLS policies
+CREATE POLICY "Users can view their own appointments"
+    ON public.appointments FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own appointments"
+    ON public.appointments FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own appointments"
+    ON public.appointments FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all appointments"
+    ON public.appointments FOR SELECT
+    USING (public.is_admin(auth.jwt() ->> 'email'));
+
+-- Create or replace trigger function for updated_at
+CREATE OR REPLACE FUNCTION public.handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Drop and recreate trigger
+DROP TRIGGER IF EXISTS appointments_updated_at ON public.appointments;
+CREATE TRIGGER appointments_updated_at
+    BEFORE UPDATE ON public.appointments
+    FOR EACH ROW
+    EXECUTE PROCEDURE public.handle_updated_at(); 
 
 -- Running migration: 20240322_create_admins.sql
 -- Create admins table if it doesn't exist
@@ -263,177 +491,663 @@ BEGIN
 END;
 $$; 
 
--- Running migration: 20240323_create_services.sql
--- Create services table
-CREATE TABLE IF NOT EXISTS public.services (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    duration INTEGER NOT NULL, -- duration in minutes
-    price DECIMAL(10,2) NOT NULL,
-    category TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+-- Running migration: 20240323_fix_appointment_policies.sql
+-- Drop existing policies
+DROP POLICY IF EXISTS "Users can view their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can create their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can update their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can delete their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can view all appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can manage all appointments" ON appointments;
+
+-- Create new policies that properly handle admin access
+CREATE POLICY "Users can view appointments"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+        SELECT 1 
+        FROM admins 
+        WHERE admins.email = auth.jwt()->>'email'
+    )
 );
 
--- Enable RLS
-ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can create appointments"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+        SELECT 1 
+        FROM admins 
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
 
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Everyone can view services" ON public.services;
-DROP POLICY IF EXISTS "Only admins can manage services" ON public.services;
+CREATE POLICY "Users can update appointments"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+        SELECT 1 
+        FROM admins 
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+        SELECT 1 
+        FROM admins 
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
 
--- Create RLS policies
-CREATE POLICY "Everyone can view services"
-    ON public.services FOR SELECT
-    TO public
-    USING (true);
+CREATE POLICY "Users can delete appointments"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id 
+    OR 
+    EXISTS (
+        SELECT 1 
+        FROM admins 
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
 
-CREATE POLICY "Only admins can manage services"
-    ON public.services FOR ALL
-    TO authenticated
-    USING (public.is_admin(auth.jwt() ->> 'email'));
+-- Ensure RLS is enabled
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY; 
 
--- Create updated_at trigger
-DROP TRIGGER IF EXISTS set_services_updated_at ON public.services;
-CREATE TRIGGER set_services_updated_at
-    BEFORE UPDATE ON public.services
-    FOR EACH ROW
-    EXECUTE FUNCTION public.set_updated_at();
+-- Running migration: 20240323_fix_appointments_table.sql
+-- Drop the old appointments table
+DROP TABLE IF EXISTS appointments CASCADE;
 
--- Insert initial services
-INSERT INTO public.services (name, description, duration, price, category) VALUES
-    ('Classic Haircut', 'Traditional haircut with clippers and scissors, includes hot towel and styling', 30, 25.00, 'haircut'),
-    ('Beard Trim', 'Professional beard trimming and shaping with hot towel treatment', 20, 15.00, 'beard'),
-    ('Haircut & Beard Combo', 'Complete grooming package with haircut and beard trim', 45, 35.00, 'combo'),
-    ('Premium Fade', 'Precision fade haircut with detailed line-up and styling', 45, 30.00, 'haircut'),
-    ('Royal Shave', 'Traditional straight razor shave with hot towel and facial massage', 30, 25.00, 'beard'),
-    ('VIP Package', 'Premium haircut, beard trim, facial treatment, and head massage', 60, 50.00, 'combo')
-ON CONFLICT (id) DO NOTHING;
-
--- Create temporary table to store old appointments data
-CREATE TEMP TABLE old_appointments AS
-SELECT * FROM public.appointments;
-
--- Drop and recreate appointments table with proper references
-DROP TABLE IF EXISTS public.appointments CASCADE;
-CREATE TABLE IF NOT EXISTS public.appointments (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    profile_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    service_id INTEGER REFERENCES public.services(id) ON DELETE RESTRICT,
+-- Create the appointments table with the correct structure
+CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     date DATE NOT NULL,
     time TIME NOT NULL,
-    cal_event_uid TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'confirmed',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    cal_event_uid TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE
 );
-
--- Add indexes
-CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON public.appointments(user_id);
-CREATE INDEX IF NOT EXISTS appointments_profile_id_idx ON public.appointments(profile_id);
-CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON public.appointments(service_id);
-CREATE INDEX IF NOT EXISTS appointments_date_idx ON public.appointments(date);
 
 -- Enable RLS
-ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Users can view their own appointments" ON public.appointments;
-DROP POLICY IF EXISTS "Users can update their own appointments" ON public.appointments;
-DROP POLICY IF EXISTS "Users can insert their own appointments" ON public.appointments;
-DROP POLICY IF EXISTS "Admins can view all appointments" ON public.appointments;
+-- Drop all existing policies
+DROP POLICY IF EXISTS "Users can view their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can create their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can update their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can delete their own appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can view all appointments" ON appointments;
+DROP POLICY IF EXISTS "Admins can manage all appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can view appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can create appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can update appointments" ON appointments;
+DROP POLICY IF EXISTS "Users can delete appointments" ON appointments;
 
--- Create RLS policies
-CREATE POLICY "Users can view their own appointments"
-    ON public.appointments FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own appointments"
-    ON public.appointments FOR UPDATE
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert their own appointments"
-    ON public.appointments FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Admins can view all appointments"
-    ON public.appointments FOR SELECT
-    USING (public.is_admin(auth.jwt() ->> 'email'));
-
--- Create a temporary table to log service mapping issues
-CREATE TEMP TABLE service_mapping_log (
-    service_name TEXT,
-    matched_service_id INTEGER,
-    matched_service_name TEXT
+-- Create new unified policies
+CREATE POLICY "appointments_select_policy"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
 );
 
--- Map services and insert data from old appointments
-WITH service_mapping AS (
-    SELECT DISTINCT ON (a.service_name) 
-        a.service_name,
-        s.id as service_id,
-        s.name as matched_service_name
-    FROM old_appointments a
-    LEFT JOIN public.services s ON 
-        lower(a.service_name) LIKE '%' || lower(s.name) || '%' OR
-        lower(s.name) LIKE '%' || lower(a.service_name) || '%'
-)
-INSERT INTO service_mapping_log
-SELECT service_name, service_id, matched_service_name
-FROM service_mapping;
+CREATE POLICY "appointments_insert_policy"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
 
--- Log unmapped services
+CREATE POLICY "appointments_update_policy"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_delete_policy"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON appointments(date, time);
+
+-- Create updated_at trigger function if it doesn't exist
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = timezone('utc'::text, now());
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS handle_updated_at ON appointments;
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at(); 
+
+-- Running migration: 20240324_final_fix.sql
+-- Drop the old appointments table
+DROP TABLE IF EXISTS appointments CASCADE;
+
+-- Create the appointments table with the correct structure
+CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    cal_event_uid TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+-- Create new unified policies
+CREATE POLICY "appointments_select_policy"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_insert_policy"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_update_policy"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_delete_policy"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON appointments(date, time);
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS handle_updated_at ON appointments;
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
+
+-- Insert test appointments
 DO $$
 DECLARE
-    unmapped RECORD;
+    v_user_id UUID;
+    v_service_id INTEGER;
 BEGIN
-    FOR unmapped IN 
-        SELECT DISTINCT service_name 
-        FROM old_appointments a
-        WHERE NOT EXISTS (
-            SELECT 1 FROM service_mapping_log l
-            WHERE l.service_name = a.service_name
-            AND l.matched_service_id IS NOT NULL
-        )
-    LOOP
-        RAISE NOTICE 'Unmapped service: %', unmapped.service_name;
-    END LOOP;
-END $$;
+    -- Get the user ID from auth.users table matching the admin email
+    SELECT id INTO v_user_id
+    FROM auth.users
+    WHERE email = 'vaggelisbobonhs@gmail.com'
+    LIMIT 1;
 
--- Insert data into new appointments table
-INSERT INTO public.appointments (
-    id,
+    -- Get the service ID for Classic Haircut
+    SELECT id INTO v_service_id
+    FROM services
+    WHERE name = 'Classic Haircut'
+    LIMIT 1;
+
+    -- Insert test appointments if we have both user_id and service_id
+    IF v_user_id IS NOT NULL AND v_service_id IS NOT NULL THEN
+        -- Insert an appointment for today
+        INSERT INTO appointments (
+            user_id,
+            service_id,
+            date,
+            time,
+            status
+        ) VALUES (
+            v_user_id,
+            v_service_id,
+            CURRENT_DATE,
+            '10:00',
+            'confirmed'
+        );
+
+        -- Insert an appointment for tomorrow
+        INSERT INTO appointments (
+            user_id,
+            service_id,
+            date,
+            time,
+            status
+        ) VALUES (
+            v_user_id,
+            v_service_id,
+            CURRENT_DATE + 1,
+            '14:00',
+            'pending'
+        );
+    END IF;
+END $$; 
+
+-- Running migration: 20240324_final_fix_v2.sql
+-- Drop the old appointments table
+DROP TABLE IF EXISTS appointments CASCADE;
+
+-- Create the appointments table with the correct structure
+CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    cal_event_uid TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+-- Create new unified policies
+CREATE POLICY "appointments_select_policy"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_insert_policy"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_update_policy"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_delete_policy"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON appointments(date, time);
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS handle_updated_at ON appointments;
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
+
+-- Create a function to get user ID by email with elevated privileges
+CREATE OR REPLACE FUNCTION get_user_id_by_email(p_email TEXT)
+RETURNS UUID
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+    SELECT id FROM auth.users WHERE email = p_email LIMIT 1;
+$$;
+
+-- Insert test appointments
+DO $$
+DECLARE
+    v_user_id UUID;
+    v_service_id INTEGER;
+BEGIN
+    -- Get the user ID using our privileged function
+    v_user_id := get_user_id_by_email('vaggelisbobonhs@gmail.com');
+
+    -- Get the service ID for Classic Haircut
+    SELECT id INTO v_service_id
+    FROM services
+    WHERE name = 'Classic Haircut'
+    LIMIT 1;
+
+    -- Insert test appointments if we have both user_id and service_id
+    IF v_user_id IS NOT NULL AND v_service_id IS NOT NULL THEN
+        RAISE NOTICE 'Inserting appointments for user_id: %, service_id: %', v_user_id, v_service_id;
+        
+        -- Insert an appointment for today
+        INSERT INTO appointments (
+            user_id,
+            service_id,
+            date,
+            time,
+            status
+        ) VALUES (
+            v_user_id,
+            v_service_id,
+            CURRENT_DATE,
+            '10:00',
+            'confirmed'
+        );
+
+        -- Insert an appointment for tomorrow
+        INSERT INTO appointments (
+            user_id,
+            service_id,
+            date,
+            time,
+            status
+        ) VALUES (
+            v_user_id,
+            v_service_id,
+            CURRENT_DATE + 1,
+            '14:00',
+            'pending'
+        );
+    ELSE
+        RAISE NOTICE 'Could not find user_id or service_id. user_id: %, service_id: %', v_user_id, v_service_id;
+    END IF;
+END $$; 
+
+-- Running migration: 20240324_fix_foreign_keys.sql
+-- Drop the old appointments table
+DROP TABLE IF EXISTS appointments CASCADE;
+
+-- Create the appointments table with the correct structure
+CREATE TABLE IF NOT EXISTS appointments (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time TIME NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    cal_event_uid TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+-- Create new unified policies
+CREATE POLICY "appointments_select_policy"
+ON appointments FOR SELECT
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_insert_policy"
+ON appointments FOR INSERT
+TO authenticated
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_update_policy"
+ON appointments FOR UPDATE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+)
+WITH CHECK (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+CREATE POLICY "appointments_delete_policy"
+ON appointments FOR DELETE
+TO authenticated
+USING (
+    auth.uid() = user_id
+    OR
+    EXISTS (
+        SELECT 1
+        FROM admins
+        WHERE admins.email = auth.jwt()->>'email'
+    )
+);
+
+-- Create indexes
+CREATE INDEX IF NOT EXISTS appointments_user_id_idx ON appointments(user_id);
+CREATE INDEX IF NOT EXISTS appointments_service_id_idx ON appointments(service_id);
+CREATE INDEX IF NOT EXISTS appointments_date_time_idx ON appointments(date, time);
+
+-- Create updated_at trigger
+DROP TRIGGER IF EXISTS handle_updated_at ON appointments;
+CREATE TRIGGER handle_updated_at
+    BEFORE UPDATE ON appointments
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_updated_at();
+
+-- Insert a test appointment
+INSERT INTO appointments (
     user_id,
-    profile_id,
     service_id,
     date,
     time,
-    cal_event_uid,
-    status,
-    created_at,
-    updated_at
+    status
 )
 SELECT 
-    a.id,
-    a.user_id,
-    a.user_id as profile_id, -- user_id is the same as profile_id
-    COALESCE(
-        (SELECT s.id 
-         FROM public.services s 
-         WHERE lower(a.service_name) LIKE '%' || lower(s.name) || '%' 
-         LIMIT 1),
-        (SELECT id FROM public.services WHERE name = 'Classic Haircut')
-    ) as service_id,
-    a.start_time::date as date,
-    a.start_time::time as time,
-    a.cal_event_uid,
-    a.status,
-    a.created_at,
-    a.updated_at
-FROM old_appointments a;
+    auth.uid(),
+    (SELECT id FROM services WHERE name = 'Classic Haircut' LIMIT 1),
+    CURRENT_DATE,
+    '10:00',
+    'confirmed'
+WHERE EXISTS (
+    SELECT 1 FROM auth.users LIMIT 1
+) AND EXISTS (
+    SELECT 1 FROM services WHERE name = 'Classic Haircut' LIMIT 1
+); 
 
--- Drop temporary tables
-DROP TABLE IF EXISTS old_appointments;
-DROP TABLE IF EXISTS service_mapping_log; 
+-- Running migration: 20240324_insert_test_appointment.sql
+-- Get the user ID for the admin user
+DO $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Get the user ID from auth.users table matching the admin email
+    SELECT id INTO v_user_id
+    FROM auth.users
+    WHERE email = 'vaggelisbobonhs@gmail.com'
+    LIMIT 1;
+
+    -- Insert the appointment using the found user ID
+    IF v_user_id IS NOT NULL THEN
+        INSERT INTO appointments (
+            user_id,
+            service_id,
+            date,
+            time,
+            status
+        )
+        SELECT 
+            v_user_id,
+            id,
+            CURRENT_DATE,
+            '10:00',
+            'confirmed'
+        FROM services 
+        WHERE name = 'Classic Haircut'
+        LIMIT 1;
+    END IF;
+END $$; 
+
+-- Running migration: 20240324_test_appointment.sql
+-- Insert a test appointment
+INSERT INTO appointments (
+    user_id,
+    service_id,
+    date,
+    time,
+    status
+)
+SELECT 
+    auth.uid(), -- This will be replaced with your user ID
+    (SELECT id FROM services WHERE name = 'Haircut' LIMIT 1), -- This will be replaced with an actual service ID
+    CURRENT_DATE,
+    '10:00',
+    'confirmed'
+WHERE EXISTS (
+    SELECT 1 FROM auth.users LIMIT 1
+) AND EXISTS (
+    SELECT 1 FROM services LIMIT 1
+); 

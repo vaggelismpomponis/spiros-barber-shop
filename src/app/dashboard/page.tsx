@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation'
 interface Profile {
   email: string
   full_name: string | null
-  isAdmin?: boolean
 }
 
 export default function DashboardPage() {
@@ -23,23 +22,20 @@ export default function DashboardPage() {
         setError(null)
         // Check if user is authenticated
         const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError) {
-          setError(`Auth error: ${userError.message}`)
-          return
-        }
+        if (userError) throw userError
         if (!user) {
           router.push('/auth/signin')
           return
         }
 
         // Check if user is admin
-        const { data: adminData } = await supabase
+        const { data: adminData, error: adminError } = await supabase
           .from('admins')
           .select('id')
           .eq('email', user.email)
           .single()
 
-        if (!adminData) {
+        if (adminError || !adminData) {
           // User is not an admin, redirect to home
           router.push('/')
           return
@@ -55,38 +51,30 @@ export default function DashboardPage() {
         if (profileError) {
           if (profileError.code === 'PGRST116') {
             // Profile doesn't exist, create it
-            const { data: newProfile, error: createError } = await supabase
+            await supabase
               .from('profiles')
               .upsert({
                 id: user.id,
                 full_name: '',
                 updated_at: new Date().toISOString()
               })
-              .select('full_name')
-              .single()
 
-            if (createError) {
-              setError(`Failed to create profile: ${createError.message}`)
-            } else {
-              setProfile({
-                email: user.email || '',
-                full_name: '',
-                isAdmin: true
-              })
-            }
+            setProfile({
+              email: user.email || '',
+              full_name: ''
+            })
           } else {
-            setError(`Profile error: ${profileError.message}`)
+            throw profileError
           }
-        } else if (profileData) {
+        } else {
           setProfile({
             email: user.email || '',
-            full_name: profileData.full_name,
-            isAdmin: true
+            full_name: profileData.full_name
           })
         }
       } catch (error) {
-        console.error('Error fetching data:', error)
-        setError(`Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        console.error('Error:', error)
+        setError(error instanceof Error ? error.message : 'An error occurred')
       } finally {
         setLoading(false)
       }
@@ -98,7 +86,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">Loading...</div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
       </div>
     )
   }
@@ -123,12 +111,6 @@ export default function DashboardPage() {
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="space-y-3">
-                  <button
-                    onClick={() => router.push('/dashboard/appointments')}
-                    className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
-                  >
-                    Manage Appointments
-                  </button>
                   <button
                     onClick={() => router.push('/dashboard/admins')}
                     className="w-full bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"

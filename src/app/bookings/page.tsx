@@ -6,6 +6,24 @@ import Cal, { getCalApi } from "@calcom/embed-react"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import { toast } from 'react-hot-toast'
+
+interface Service {
+  id: number
+  name: string
+  duration: number
+  price: number
+}
+
+interface RawAppointment {
+  id: number
+  user_id: string
+  service_id: number
+  date: string
+  time: string
+  status: string
+  service: Service | Service[]
+}
 
 interface Appointment {
   id: number
@@ -14,12 +32,7 @@ interface Appointment {
   date: string
   time: string
   status: string
-  notes?: string
-  service: {
-    name: string
-    duration: number
-    price: number
-  }
+  service: Service
 }
 
 export default function BookingPage() {
@@ -67,53 +80,107 @@ export default function BookingPage() {
   // Fetch user's appointments
   const fetchAppointments = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      console.log('Current user:', user)
+      console.log('Starting fetchAppointments...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (user) {
-        // First get all appointments with service details
-        const { data, error } = await supabase
-          .from('appointments')
-          .select(`
-            *,
-            service:services(name, duration, price)
-          `)
-          .eq('user_id', user.id)
-          .eq('status', 'confirmed')
-          .gte('date', new Date().toISOString().split('T')[0])
-          .order('date', { ascending: true })
-          .order('time', { ascending: true });
-
-        console.log('Fetched appointments:', data)
-        console.log('Fetch error:', error)
-
-        if (error) {
-          console.error('Error fetching appointments:', error)
-        } else {
-          // Remove duplicates based on date, time, and service_id
-          const uniqueAppointments = data ? data.filter((appointment, index, self) =>
-            index === self.findIndex((a) => (
-              a.date === appointment.date &&
-              a.time === appointment.time &&
-              a.service_id === appointment.service_id
-            ))
-          ) : [];
-          
-          console.log('Unique appointments:', uniqueAppointments);
-          setAppointments(uniqueAppointments);
-        }
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        return;
       }
-    } catch (error) {
-      console.error('Error in fetchAppointments:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      
+      console.log('Session data:', {
+        exists: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email
+      });
+      
+      if (!session?.user) {
+        console.log('No active session found');
+        setAppointments([]);
+        return;
+      }
 
-  // Initial fetch
+      const currentDate = new Date().toISOString().split('T')[0];
+      console.log('Fetching appointments from date:', currentDate);
+
+      // Get appointments with service details
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          user_id,
+          service_id,
+          date,
+          time,
+          status,
+          service:services!inner (
+            id,
+            name,
+            duration,
+            price
+          )
+        `)
+        .eq('user_id', session.user.id)
+        .not('status', 'eq', 'cancelled')
+        .gte('date', currentDate)
+        .order('date', { ascending: true })
+        .order('time', { ascending: true });
+
+      console.log('Raw appointments from DB:', appointments);
+
+      if (appointmentsError) {
+        console.error('Error fetching appointments:', appointmentsError);
+        throw appointmentsError;
+      }
+
+      // Remove duplicates based on unique combination of date, time, and service
+      const uniqueAppointments = (appointments as RawAppointment[] || []).reduce((acc: RawAppointment[], curr) => {
+        const isDuplicate = acc.some(apt => 
+          apt.date === curr.date && 
+          apt.time === curr.time && 
+          apt.service_id === curr.service_id
+        );
+        if (!isDuplicate) {
+          acc.push(curr);
+        } else {
+          console.log('Found duplicate appointment:', curr);
+        }
+        return acc;
+      }, []);
+
+      // Transform the data to ensure service is a single object
+      const transformedAppointments: Appointment[] = uniqueAppointments.map(apt => ({
+        ...apt,
+        service: Array.isArray(apt.service) ? apt.service[0] : apt.service
+      }));
+
+      console.log('Final transformed appointments:', transformedAppointments);
+      setAppointments(transformedAppointments);
+    } catch (error) {
+      console.error('Error in fetchAppointments:', error);
+      toast.error('Failed to load your appointments. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Single useEffect for initial fetch
   useEffect(() => {
-    fetchAppointments()
-  }, [])
+    fetchAppointments();
+  }, []);
+
+  // Debugging appointments state changes
+  useEffect(() => {
+    console.log('Appointments state updated:', {
+      count: appointments.length,
+      appointments: appointments.map(apt => ({
+        id: apt.id,
+        date: apt.date,
+        time: apt.time,
+        service: apt.service.name
+      }))
+    });
+  }, [appointments]);
 
   useEffect(() => {
     (async function () {
@@ -304,8 +371,8 @@ export default function BookingPage() {
                 // Refresh appointments immediately
                 await fetchAppointments();
                 
-                // Redirect to dashboard after successful booking
-                router.push('/dashboard?tab=appointments');
+                // Redirect to bookings page after successful booking
+                router.push('/bookings');
               } catch (error) {
                 console.error('Detailed appointment save error:', {
                   error,
@@ -345,20 +412,48 @@ export default function BookingPage() {
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Your Upcoming Appointments</h2>
               {loading ? (
-                <p className="text-gray-500">Loading appointments...</p>
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+                </div>
               ) : appointments.length === 0 ? (
-                <p className="text-gray-500">No upcoming appointments</p>
+                <div className="text-center py-6">
+                  <p className="text-gray-500">No upcoming appointments</p>
+                  <p className="text-sm text-gray-400 mt-2">Use the calendar to schedule your visit</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {appointments.map((appointment) => (
-                    <div key={appointment.id} className="border-l-4 border-black pl-4 py-2">
-                      <p className="font-medium">{appointment.service?.name || 'Unknown Service'}</p>
-                      <p className="text-sm text-gray-600">
-                        {format(new Date(`${appointment.date}T00:00:00`), 'PPP')}
+                    <div 
+                      key={appointment.id} 
+                      className={`border-l-4 pl-4 py-3 ${
+                        appointment.status === 'confirmed' 
+                          ? 'border-green-500 bg-green-50' 
+                          : 'border-yellow-500 bg-yellow-50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <p className="font-medium text-gray-900">
+                          {appointment.service?.name || 'Unknown Service'}
+                        </p>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                          appointment.status === 'confirmed'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {format(new Date(`${appointment.date}T${appointment.time}`), 'PPP')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {appointment.time.slice(0, 5)}
+                        {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
                       </p>
+                      {appointment.service?.duration && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Duration: {appointment.service.duration} minutes
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
