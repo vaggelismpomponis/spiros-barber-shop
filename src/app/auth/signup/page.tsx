@@ -15,6 +15,7 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
@@ -37,11 +38,22 @@ export default function SignUp() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
-          captchaToken: turnstileToken
+          captchaToken: turnstileToken,
+          data: {
+            rememberMe
+          }
         },
       })
 
       if (error) throw error
+
+      if (rememberMe) {
+        await supabase.auth.setSession({
+          access_token: (await supabase.auth.getSession()).data.session?.access_token || '',
+          refresh_token: (await supabase.auth.getSession()).data.session?.refresh_token || ''
+        })
+      }
+
       router.push('/auth/verify-email')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred')
@@ -126,6 +138,20 @@ export default function SignUp() {
                   )}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 text-[#1A1A1A] focus:ring-[#1A1A1A] border-gray-300 rounded"
+              />
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                Remember me
+              </label>
             </div>
 
             {error && (

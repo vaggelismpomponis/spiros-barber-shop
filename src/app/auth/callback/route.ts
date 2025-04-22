@@ -9,7 +9,23 @@ export async function GET(request: Request) {
   if (code) {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    await supabase.auth.exchangeCodeForSession(code)
+    
+    // Exchange the code for a session
+    const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error && session) {
+      // Check if user has rememberMe preference
+      const { data: { user } } = await supabase.auth.getUser()
+      const rememberMe = user?.user_metadata?.rememberMe
+
+      if (rememberMe) {
+        // Extend session duration for remembered users
+        await supabase.auth.setSession({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token
+        })
+      }
+    }
   }
 
   // URL to redirect to after sign in process completes

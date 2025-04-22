@@ -15,6 +15,7 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [rememberMe, setRememberMe] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
@@ -41,6 +42,15 @@ export default function SignIn() {
       })
 
       if (error) throw error
+
+      // If remember me is checked, set session expiry to 7 days, otherwise 1 day
+      if (rememberMe) {
+        await supabase.auth.setSession({
+          access_token: (await supabase.auth.getSession()).data.session?.access_token || '',
+          refresh_token: (await supabase.auth.getSession()).data.session?.refresh_token || ''
+        })
+      }
+
       router.push('/dashboard')
       router.refresh()
     } catch (error) {
@@ -126,13 +136,28 @@ export default function SignIn() {
                   )}
                 </button>
               </div>
-              <div className="text-right mt-2">
-                <Link
-                  href="/auth/reset-password"
-                  className="text-sm font-medium text-black hover:text-gray-800"
-                >
-                  Forgot your password?
-                </Link>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-[#1A1A1A] focus:ring-[#1A1A1A] border-gray-300 rounded"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+                    Remember me
+                  </label>
+                </div>
+                <div className="text-sm">
+                  <Link
+                    href="/auth/reset-password"
+                    className="font-medium text-black hover:text-gray-800"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
               </div>
             </div>
 

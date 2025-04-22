@@ -2,8 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Header } from '@/components/Header'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import SessionProvider from '@/components/SessionProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,14 +18,11 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = createServerComponentClient({ cookies })
-  const { data: { session } } = await supabase.auth.getSession()
-
   return (
     <html lang="en">
       <head>
@@ -34,6 +30,7 @@ export default async function RootLayout({
         <link rel="mask-icon" href="/favicon.svg" color="#2B4C7E" />
       </head>
       <body className={inter.className}>
+        <SessionProvider />
         <Header />
         <main>{children}</main>
       </body>
