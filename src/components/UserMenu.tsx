@@ -103,7 +103,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
       <div className="flex items-center space-x-4">
         <Link
           href="/auth/signin"
-          className="text-sm font-medium text-white hover:text-gray-300"
+          className="text-sm font-medium text-black hover:text-gray-400 bg-white px-4 py-2 rounded-md border border-black"
         >
           Sign in
         </Link>
