@@ -485,7 +485,7 @@ export default function BookingPage() {
         
         <div className="grid md:grid-cols-3 gap-8">
           {/* Current Appointments Section */}
-          <div className="md:col-span-1">
+          <div className="md:col-span-1 order-2 md:order-1">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Your Upcoming Appointments</h2>
               {loading ? (
@@ -583,7 +583,7 @@ export default function BookingPage() {
           </div>
 
           {/* Booking Calendar Section */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 order-1 md:order-2">
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="relative w-full md:h-[calc(90vh-200px)] h-screen" style={{
                 minHeight: '600px',
