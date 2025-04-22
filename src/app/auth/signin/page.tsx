@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FcGoogle } from 'react-icons/fc'
 import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
-import Turnstile from 'react-turnstile'
+import TurnstileWidget from '@/components/TurnstileWidget'
 
 export default function SignIn() {
   const [email, setEmail] = useState('')
@@ -168,10 +168,7 @@ export default function SignIn() {
             )}
 
             <div className="mb-4">
-              <Turnstile
-                sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}
-                onSuccess={handleTurnstileSuccess}
-              />
+              <TurnstileWidget onSuccess={handleTurnstileSuccess} />
             </div>
 
             <div>
