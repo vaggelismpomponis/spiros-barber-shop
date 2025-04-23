@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { format } from 'date-fns'
 import { toast } from 'react-hot-toast'
+import { el } from 'date-fns/locale'
 
 interface Service {
   id: number
@@ -354,6 +355,41 @@ export default function ManageAppointmentsPage() {
     }
   };
 
+  // Add this function after the existing imports
+  const exportToExcel = (appointments: Appointment[]) => {
+    // Format the data for Excel
+    const formattedData = appointments.map(apt => ({
+      'Ημερομηνία': format(new Date(apt.date), 'dd/MM/yyyy', { locale: el }),
+      'Ώρα': format(new Date(`2000-01-01T${apt.time}`), 'HH:mm', { locale: el }),
+      'Υπηρεσία': apt.service?.name || 'Άγνωστη Υπηρεσία',
+      'Πελάτης': apt.user?.full_name || 'Άγνωστος',
+      'Τηλέφωνο': apt.user?.phone || 'Δεν βρέθηκε'
+    }));
+
+    // Convert to TSV format using tabs
+    const headers = Object.keys(formattedData[0]);
+    const tsvContent = [
+      headers.join('\t'),
+      ...formattedData.map(row => 
+        headers.map(header => {
+          const value = row[header as keyof typeof row] || '';
+          // Remove any tabs from the value to prevent format issues
+          return value.toString().replace(/\t/g, ' ');
+        }).join('\t')
+      )
+    ].join('\n');
+
+    // Create and trigger download
+    const blob = new Blob(['\ufeff' + tsvContent], { type: 'text/tab-separated-values;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `appointments-${format(new Date(), 'dd-MM-yyyy')}.tsv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <AdminProtected>
       <div className="container mx-auto px-4 py-8">
@@ -376,14 +412,21 @@ export default function ManageAppointmentsPage() {
             </div>
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">Όλα τα ραντεβού
-                </h2>
-                <button
-                  onClick={() => fetchAppointments()}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Ανανέωση
-                </button>
+                <h2 className="text-xl font-semibold">Όλα τα ραντεβού</h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportToExcel(appointments)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    Εξαγωγή σε Excel
+                  </button>
+                  <button
+                    onClick={() => fetchAppointments()}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Ανανέωση
+                  </button>
+                </div>
               </div>
 
               {loading ? (

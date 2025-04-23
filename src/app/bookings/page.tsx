@@ -564,7 +564,13 @@ export default function BookingPage() {
                   }}
                   config={{
                     theme: 'light',
-                    layout: "month_view"
+                    layout: "month_view",
+                    hideEventTypeDetails: "false",
+                    locale: "el",
+                    defaultCountry: "GR",
+                    metadata: {
+                      phoneCountry: "GR"
+                    }
                   }}
                 />
               </div>
