@@ -182,7 +182,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">Περιμένετε...</div>
       </div>
     )
   }
@@ -192,7 +192,7 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h1 className="text-2xl font-bold mb-8 text-center">Profile Settings</h1>
+            <h1 className="text-2xl font-bold mb-8 text-center">Ρυθμίσεις Προφίλ</h1>
 
             {/* Profile Image Section */}
             <div className="mb-8 flex flex-col items-center">
@@ -213,7 +213,7 @@ export default function ProfilePage() {
                 )}
                 {uploadingImage && (
                   <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                    <div className="text-white">Uploading...</div>
+                    <div className="text-white">Περιμένετε...</div>
                   </div>
                 )}
               </div>
@@ -230,7 +230,7 @@ export default function ProfilePage() {
                 disabled={uploadingImage}
                 className="bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A1A1A]"
               >
-                {uploadingImage ? 'Uploading...' : 'Change Profile Picture'}
+                {uploadingImage ? 'Uploading...' : 'Αλλαγή εικόνας προφίλ'}
               </button>
             </div>
 
@@ -251,7 +251,7 @@ export default function ProfilePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Full Name
+                  Ονοματεπώνυμο
                 </label>
                 <div className="mt-1">
                   <input
@@ -266,7 +266,7 @@ export default function ProfilePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Phone Number
+                  Τηλέφωνο
                 </label>
                 <div className="mt-1">
                   <input
@@ -284,7 +284,7 @@ export default function ProfilePage() {
                   <PasswordInput
                     value={password}
                     onChange={setPassword}
-                    label="New Password (optional)"
+                    label="Νέος Κωδικός (προαιρετικά)"
                     autoComplete="new-password"
                     showStrengthIndicator
                   />
@@ -310,7 +310,7 @@ export default function ProfilePage() {
                     onClick={() => setIsEditing(true)}
                     className="bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A1A1A]"
                   >
-                    Edit Profile
+                    Επεξεργασία προφίλ
                   </button>
                 ) : (
                   <>
@@ -323,14 +323,14 @@ export default function ProfilePage() {
                       }}
                       className="bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A1A1A]"
                     >
-                      Cancel
+                      Ακύρωση
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
                       className="bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A1A1A]"
                     >
-                      {loading ? 'Saving...' : 'Save Changes'}
+                      {loading ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
                     </button>
                   </>
                 )}

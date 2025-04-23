@@ -133,7 +133,8 @@ export default function AdminManagementPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h1 className="text-2xl font-bold mb-6">Admin Management</h1>
+            <h1 className="text-2xl font-bold mb-6">Διαχείριση Διαχειριστών
+            </h1>
 
             {error && (
               <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-md">
@@ -148,7 +149,7 @@ export default function AdminManagementPage() {
                   type="email"
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="Enter email to add as admin"
+                  placeholder="Εισαγάγετε email για προσθήκη ως διαχειριστή"
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
                   disabled={isSubmitting}
                 />
@@ -157,14 +158,15 @@ export default function AdminManagementPage() {
                   disabled={isSubmitting || !newAdminEmail.trim()}
                   className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 disabled:bg-gray-400"
                 >
-                  {isSubmitting ? 'Adding...' : 'Add Admin'}
+                  {isSubmitting ? '...' : 'Προσθήκη Διαχειριστή'}
                 </button>
               </div>
             </form>
 
             {/* Admin list */}
             <div className="bg-gray-50 rounded-md">
-              <h2 className="text-lg font-semibold mb-4">Current Admins</h2>
+              <h2 className="text-lg font-semibold mb-4">Τρέχοντες διαχειριστές
+              </h2>
               <div className="space-y-2">
                 {admins.map((admin) => (
                   <div
@@ -182,7 +184,7 @@ export default function AdminManagementPage() {
                       disabled={admins.length <= 1}
                       className="text-red-600 hover:text-red-800 text-sm font-medium disabled:text-gray-400"
                     >
-                      Remove
+                      Αφαίρεση
                     </button>
                   </div>
                 ))}

@@ -143,14 +143,14 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           <div className="px-4 py-2 border-b">
             <p className="text-sm font-medium text-gray-900">{profile?.full_name || 'User'}</p>
             <p className="text-sm text-gray-500 truncate">{user?.email}</p>
-            {isAdmin && <p className="text-xs text-blue-600 mt-1">Admin</p>}
+            {isAdmin && <p className="text-xs text-blue-600 mt-1">Διαχειριστής</p>}
           </div>
           <Link
             href="/profile"
             onClick={() => setIsOpen(false)}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
-            Profile Settings
+            Ρυθμίσεις προφίλ
           </Link>
           {isAdmin && (
             <Link
@@ -158,7 +158,7 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
               onClick={() => setIsOpen(false)}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
             >
-              Admin Dashboard
+              Πίνακας ελέγχου διαχειριστή
             </Link>
           )}
           <Link
@@ -166,13 +166,13 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
             onClick={() => setIsOpen(false)}
             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
           >
-            My Bookings
+            Οι κρατήσεις μου
           </Link>
           <button
             onClick={handleSignOut}
             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
           >
-            Sign out
+            Αποσύνδεση
           </button>
         </div>
       )}

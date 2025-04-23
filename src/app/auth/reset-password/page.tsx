@@ -35,12 +35,12 @@ export default function ResetPassword() {
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Reset your password
+          Επαναφέρετε τον κωδικό πρόσβασής σας
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
+          Ή{' '}
           <Link href="/auth/signin" className="font-medium text-[#1A1A1A] hover:text-gray-800">
-            return to sign in
+          επιστρέψτε για να συνδεθείτε
           </Link>
         </p>
       </div>
@@ -50,7 +50,7 @@ export default function ResetPassword() {
           <form className="space-y-6" onSubmit={handleResetPassword}>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+                Διεύθυνση Email
               </label>
               <div className="mt-1">
                 <input
@@ -84,7 +84,7 @@ export default function ResetPassword() {
                 disabled={loading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#1A1A1A] hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A1A1A]"
               >
-                {loading ? 'Sending reset link...' : 'Send reset link'}
+                {loading ? 'Αποστολή συνδέσμου επαναφοράς...' : 'Αποστολή συνδέσμου επαναφοράς'}
               </button>
             </div>
           </form>

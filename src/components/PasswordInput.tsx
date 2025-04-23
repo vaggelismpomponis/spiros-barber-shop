@@ -16,7 +16,7 @@ interface PasswordInputProps {
 const PasswordInput: React.FC<PasswordInputProps> = ({
   value,
   onChange,
-  placeholder = 'Enter password',
+  placeholder = 'Εισάγετε Κωδικό Πρόσβασης',
   label = 'Password',
   error,
   showStrengthIndicator = false,
@@ -61,25 +61,25 @@ const PasswordInput: React.FC<PasswordInputProps> = ({
       {showStrengthIndicator && (
         <div className="mt-2 space-y-1 text-sm">
           <p className={`flex items-center ${strength.hasMinLength ? 'text-green-600' : 'text-gray-500'}`}>
-            • Minimum 8 characters
+            • Ελάχιστο 8 χαρακτήρες
           </p>
           <p className={`flex items-center ${strength.hasUpperCase ? 'text-green-600' : 'text-gray-500'}`}>
-            • At least one uppercase letter
+            • Ελάχιστο ένα κεφαλαίο γράμμα
           </p>
           <p className={`flex items-center ${strength.hasLowerCase ? 'text-green-600' : 'text-gray-500'}`}>
-            • At least one lowercase letter
+            • Ελάχιστο ένα μικρό γράμμα
           </p>
           <p className={`flex items-center ${strength.hasNumber ? 'text-green-600' : 'text-gray-500'}`}>
-            • At least one number
+            • Ελάχιστο ένα αριθμός
           </p>
           <p className={`flex items-center ${strength.hasSpecialChar ? 'text-green-600' : 'text-gray-500'}`}>
-            • At least one special character
+            • Ελάχιστο έναν ειδικό χαρακτήρα
           </p>
           <div className="mt-2">
             <div className="text-sm font-medium">
-              Password strength:{' '}
+              Ισχύς κωδικού:{' '}
               <span className={strengthColor}>
-                {strength.isValid ? 'Strong' : 'Weak'}
+                {strength.isValid ? 'Ισχυρός' : 'Αδύνατος'}
               </span>
             </div>
           </div>

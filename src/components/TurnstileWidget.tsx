@@ -36,31 +36,31 @@ export default function TurnstileWidget({ onSuccess }: TurnstileWidgetProps) {
 
   const handleError = useCallback((errorCode: string) => {
     console.error('Turnstile error:', errorCode)
-    let errorMessage = 'Verification failed. Please try again.'
+    let errorMessage = 'Η επαλήθευση απέτυχε. Παρακαλούμε προσπαθήστε ξανά.'
     
     // Add specific error messages
     switch (errorCode) {
       case '110200':
-        errorMessage = `Domain validation error. Your current domain (${window.location.host}) is not authorized. Please add it to Cloudflare Turnstile settings.`
+        errorMessage = `Προέκυψε σφάλμα στην επαλήθευση του τομέα. Ο τρέχον τομέα σας (${window.location.host}) δεν είναι εξουσιοδοτημένος. Παρακαλούμε προσθέστε τον στις ρυθμίσεις του Cloudflare Turnstile.`
         break
       case '110201':
-        errorMessage = 'Sitekey validation error. The configured site key is invalid.'
+        errorMessage = 'Προέκυψε σφάλμα στην επαλήθευση του sitekey.Το συνδεδεμένο sitekey δεν είναι έγκυρο.'
         break
       case '110202':
-        errorMessage = 'Connection validation error. Please check your internet connection.'
+        errorMessage = 'Προέκυψε σφάλμα στην επαλήθευση της σύνδεσης. Παρακαλούμε ελέγξτε τη σύνδεση σας.'
         break
       case '110203':
-        errorMessage = 'Timeout error. Please refresh and try again.'
+        errorMessage = 'Προέκυψε σφάλμα στην επαλήθευση του timeout. Παρακαλούμε ανανεώστε και προσπαθήστε ξανά.'
         break
       default:
-        errorMessage = `Verification error (${errorCode}). Please try again.`
+        errorMessage = `Προέκυψε σφάλμα στην επαλήθευση (${errorCode}). Παρακαλούμε προσπαθήστε ξανά.`
     }
     
     setError(errorMessage)
   }, [])
 
   const handleExpire = useCallback(() => {
-    setError('Verification expired. Please try again.')
+    setError('Η επαλήθευση έχει λήξει. Παρακαλούμε προσπαθήστε ξανά.')
   }, [])
 
   if (!siteKey) {

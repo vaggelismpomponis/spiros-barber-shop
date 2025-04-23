@@ -66,17 +66,14 @@ export default function ContactPage() {
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900">Contact Us</h1>
-          <p className="mt-4 text-xl text-gray-600">
-            We'd love to hear from you. Get in touch with us.
-          </p>
+          <h1 className="text-4xl font-bold text-gray-900">Επικοινωνήστε μαζί μας</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Contact Information and Map */}
           <div className="bg-white shadow-lg rounded-lg overflow-hidden">
             <div className="p-6 md:p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Στοιχεία Επικοινωνίας</h2>
               
               <div className="space-y-6">
                 <div className="flex items-start">
@@ -84,11 +81,11 @@ export default function ContactPage() {
                     <FaMapMarkerAlt className="h-6 w-6 text-gray-600" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">Location</h3>
+                    <h3 className="text-lg font-medium text-gray-900">Τοποθεσία</h3>
                     <p className="mt-1 text-gray-600">
                       Κοραή 17<br />
                       Λάρισα, 412 23<br />
-                      Greece
+                      Ελλάδα
                     </p>
                   </div>
                 </div>
@@ -98,8 +95,9 @@ export default function ContactPage() {
                     <FaPhone className="h-6 w-6 text-gray-600" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">Phone</h3>
+                    <h3 className="text-lg font-medium text-gray-900">Τηλέφωνο Επικοινωνίας</h3>
                     <p className="mt-1 text-gray-600">+30 210 1234567</p>
+                    <p className="mt-1 text-gray-600">+30 698 344 5031</p>
                   </div>
                 </div>
 
@@ -109,7 +107,7 @@ export default function ContactPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">Email</h3>
-                    <p className="mt-1 text-gray-600">info@spirosbarber.com</p>
+                    <p className="mt-1 text-gray-600">spirosbarbershop@hotmail.com</p>
                   </div>
                 </div>
 
@@ -118,11 +116,11 @@ export default function ContactPage() {
                     <FaClock className="h-6 w-6 text-gray-600" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-lg font-medium text-gray-900">Business Hours</h3>
+                    <h3 className="text-lg font-medium text-gray-900">Ώρες λειτουργίας</h3>
                     <div className="mt-1 text-gray-600">
-                      <p>Monday - Friday: 9:00 AM - 8:00 PM</p>
-                      <p>Saturday: 9:00 AM - 6:00 PM</p>
-                      <p>Sunday: Closed</p>
+                      <p>Δευτέρα - Παρασκευή: 9:00 π.μ - 8:00 μ.μ</p>
+                      <p>Σάββατο: 9:00 π.μ - 6:00 μ.μ</p>
+                      <p>Κυριακή: Κλειστά</p>
                     </div>
                   </div>
                 </div>
@@ -137,11 +135,11 @@ export default function ContactPage() {
 
           {/* Contact Form */}
           <div className="bg-white shadow-lg rounded-lg p-6 md:p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Send us a Message</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Στείλτε μας Μήνυμα</h2>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                  Name
+                  Ονοματεπώνυμο
                 </label>
                 <input
                   type="text"
@@ -171,7 +169,7 @@ export default function ContactPage() {
 
               <div>
                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
-                  Subject
+                  Θέμα
                 </label>
                 <input
                   type="text"
@@ -186,7 +184,7 @@ export default function ContactPage() {
 
               <div>
                 <label htmlFor="message" className="block text-sm font-medium text-gray-700">
-                  Message
+                  Μήνυμα
                 </label>
                 <textarea
                   id="message"
@@ -206,12 +204,12 @@ export default function ContactPage() {
                   status === 'loading' ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                {status === 'loading' ? 'Sending...' : 'Send Message'}
+                {status === 'loading' ? 'Sending...' : 'Αποστολή'}
               </button>
 
               {status === 'success' && (
                 <div className="text-green-600 text-sm">
-                  Your message has been sent successfully!
+                  Το μήνυμά σας στάλθηκε με επιτυχία!
                 </div>
               )}
 

@@ -50,20 +50,20 @@ export function Header() {
       {/* Main header section */}
       <div className="container mx-auto px-4 h-16 flex items-center justify-between relative z-30">
         <Link href="/" className="text-2xl font-bold text-white">
-          Barbershop
+          Spiros Barbershop
         </Link>
         
         {/* Desktop Navigation with Profile */}
         <div className="hidden md:flex items-center gap-6">
           <nav className="flex items-center gap-6">
             <Link href="/services" className="text-gray-300 hover:text-white transition-colors">
-              Services
+              Υπηρεσίες
             </Link>
             <Link href="/bookings" className="text-gray-300 hover:text-white transition-colors">
-              Book Now
+              Κλείστε Ραντεβού
             </Link>
             <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
-              Contact
+              Επικοινωνία
             </Link>
           </nav>
           {/* Desktop Profile Menu */}
@@ -113,21 +113,21 @@ export function Header() {
               className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Services
+              Υπηρεσίες
             </Link>
             <Link
               href="/bookings"
               className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Book Now
+              Κλείστε Ραντεβού
             </Link>
             <Link
               href="/contact"
               className="text-gray-300 hover:text-white transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Contact
+              Επικοινωνία
             </Link>
           </nav>
         </div>

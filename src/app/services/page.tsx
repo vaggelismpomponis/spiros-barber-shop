@@ -75,11 +75,8 @@ export default function ServicesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Our Services
+            Οι Υπηρεσίες μας
           </h1>
-          <p className="mt-3 max-w-2xl mx-auto text-gray-500 sm:mt-4">
-            Professional haircuts and grooming services for the modern gentleman
-          </p>
         </div>
 
         {/* Category Filter */}
@@ -92,7 +89,7 @@ export default function ServicesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            All Services
+            Όλες οι Υπηρεσίες μας 
           </button>
           <button
             onClick={() => setSelectedCategory('haircut')}
@@ -102,7 +99,7 @@ export default function ServicesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Haircuts
+            Κουρέματα
           </button>
           <button
             onClick={() => setSelectedCategory('beard')}
@@ -112,7 +109,7 @@ export default function ServicesPage() {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Beard
+            Μούσι
           </button>
           <button
             onClick={() => setSelectedCategory('combo')}
@@ -155,7 +152,7 @@ export default function ServicesPage() {
                     href="/bookings"
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1A1A1A] hover:bg-gray-800"
                   >
-                    Book Now
+                    Κλείσε Ραντεβού
                   </Link>
                 </div>
               </div>

@@ -42,7 +42,7 @@ const AdminProtected = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) {
-          setError('You must be logged in to access this page')
+          setError('Πρέπει να είστε συνδεδεμένοι για να αποκτήσετε πρόσβαση σε αυτή τη σελίδα')
           return
         }
 
@@ -53,7 +53,7 @@ const AdminProtected = ({ children }: { children: React.ReactNode }) => {
           .single()
 
         if (adminError || !adminData) {
-          setError('You do not have permission to access this page')
+          setError('Δεν έχετε άδεια πρόσβασης σε αυτήν τη σελίδα')
           return
         }
 
@@ -81,7 +81,7 @@ const AdminProtected = ({ children }: { children: React.ReactNode }) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="bg-red-100 border border-red-400 text-red-700 px-8 py-6 rounded-lg max-w-md text-center">
-          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <h2 className="text-xl font-bold mb-2">Δεν επιτρέπεται η πρόσβαση</h2>
           <p>{error}</p>
         </div>
       </div>
@@ -319,7 +319,7 @@ export default function ManageAppointmentsPage() {
 
         if (!cancelResponse.ok) {
           console.error('Failed to cancel Cal.com booking:', responseData);
-          toast.error(responseData.error || 'Failed to cancel Cal.com booking. Please try again.');
+          toast.error(responseData.error || 'Η ακύρωση της κράτησης Cal.com απέτυχε. Δοκιμάστε ξανά.');
           return;
         }
       }
@@ -339,7 +339,7 @@ export default function ManageAppointmentsPage() {
         throw error;
       }
 
-      console.log('Updated appointment in database:', updatedAppointment);
+      console.log('Ενημερωμένο ραντεβού στη βάση δεδομένων:', updatedAppointment);
 
       // Show success message
       toast.success(`Appointment ${newStatus} successfully`);
@@ -357,7 +357,8 @@ export default function ManageAppointmentsPage() {
   return (
     <AdminProtected>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Manage Appointments</h1>
+        <h1 className="text-3xl font-bold mb-6">Διαχείριση ραντεβού
+        </h1>
         
         {error ? (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
@@ -370,17 +371,18 @@ export default function ManageAppointmentsPage() {
                 onClick={() => setShowAll(!showAll)}
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
-                {showAll ? 'Show Active Only' : 'Show All'}
+                {showAll ? 'Εμφάνιση μόνο ενεργών' : 'Εμφάνιση Όλων'}
               </button>
             </div>
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">All Appointments</h2>
+                <h2 className="text-xl font-semibold">Όλα τα ραντεβού
+                </h2>
                 <button
                   onClick={() => fetchAppointments()}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 >
-                  Refresh
+                  Ανανέωση
                 </button>
               </div>
 
@@ -390,7 +392,7 @@ export default function ManageAppointmentsPage() {
                 </div>
               ) : appointments.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-gray-500">No appointments found</p>
+                  <p className="text-gray-500">Δεν βρέθηκαν ραντεβού</p>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -418,22 +420,22 @@ export default function ManageAppointmentsPage() {
                             <div className="flex justify-between items-start">
                               <div>
                                 <p className="font-medium text-gray-900">
-                                  {appointment.service?.name || 'Unknown Service'}
+                                  {appointment.service?.name || 'Άγνωστη Υπηρεσία'}
                                 </p>
                                 <p className="text-sm text-gray-600">
                                   {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
                                 </p>
                                 {appointment.service?.duration && (
                                   <p className="text-xs text-gray-500 mt-1">
-                                    Duration: {appointment.service.duration} minutes
+                                    Διάρκεια: {appointment.service.duration} λεπτά
                                   </p>
                                 )}
                                 <div className="mt-2 space-y-1">
                                   <p className="text-sm font-medium text-gray-700">
-                                    Client: {appointment.user?.full_name || 'Unknown'}
+                                    Πελάτης: {appointment.user?.full_name || 'Άγνωστος'}
                                   </p>
                                   <p className="text-xs text-gray-600">
-                                    Phone: {appointment.user?.phone || 'N/A'}
+                                    Τηλέφωνο: {appointment.user?.phone || 'Δεν βρέθηκε'}
                                   </p>
                                 </div>
                               </div>
@@ -448,7 +450,7 @@ export default function ManageAppointmentsPage() {
                       onClick={() => setShowAll(true)}
                       className="w-full mt-4 py-2 px-4 bg-[#1A1A1A] text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
                     >
-                      Show {appointments.length - 10} More Appointments
+                      Εμφάνισε {appointments.length - 10} Περισσότερα Ραντεβού
                     </button>
                   )}
                   {showAll && appointments.length > 10 && (
@@ -456,7 +458,7 @@ export default function ManageAppointmentsPage() {
                       onClick={() => setShowAll(false)}
                       className="w-full mt-4 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
                     >
-                      Show Less
+                      Εμφάνισε Λιγότερα Ραντεβού
                     </button>
                   )}
                 </div>

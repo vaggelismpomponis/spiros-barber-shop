@@ -21,12 +21,9 @@ export default function Home() {
         <div className="relative z-10 container mx-auto px-4 py-8 sm:py-12 md:py-16">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6">
-              Welcome to Our Barbershop
+              Καλώς ήρθατε στο Spiros Barbershop
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-gray-200 mb-8 sm:mb-10">
-              Professional haircuts and styling by expert barbers
-            </p>
-            
+        
             {/* Buttons Container */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
               <a
@@ -35,7 +32,7 @@ export default function Home() {
                          bg-white text-[#1A1A1A] text-base sm:text-lg font-semibold rounded-lg 
                          hover:bg-gray-100 transition-colors duration-300 min-w-[160px]"
               >
-                Book Now
+                Κλείσε Ραντεβού
               </a>
               <a
                 href="/services"
@@ -43,7 +40,7 @@ export default function Home() {
                          border-2 border-white text-white text-base sm:text-lg font-semibold rounded-lg 
                          hover:bg-white/10 transition-colors duration-300 min-w-[160px]"
               >
-                Our Services
+                Οι Υπηρεσίες μας
               </a>
             </div>
           </div>

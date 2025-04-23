@@ -481,21 +481,21 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <main className="flex-1 container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8 text-center">Book Your Appointment</h1>
+        <h1 className="text-4xl font-bold mb-8 text-center">Κλείστε το ραντεβού σας</h1>
         
         <div className="grid md:grid-cols-3 gap-8">
           {/* Current Appointments Section */}
           <div className="md:col-span-1 order-2 md:order-1">
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Your Upcoming Appointments</h2>
+              <h2 className="text-xl font-semibold mb-4">Τα επερχόμενα ραντεβού σας</h2>
               {loading ? (
                 <div className="flex justify-center items-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1A1A1A]"></div>
                 </div>
               ) : appointments.length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-gray-500">No upcoming appointments</p>
-                  <p className="text-sm text-gray-400 mt-2">Use the calendar to schedule your visit</p>
+                  <p className="text-gray-500">Δεν βρέθηκαν επερχόμενα ραντεβού</p>
+                  <p className="text-sm text-gray-400 mt-2">Χρησιμοποιήστε το ημερολόγιο για να προγραμματίσετε την επίσκεψή σας</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -529,7 +529,7 @@ export default function BookingPage() {
                       onClick={() => setShowAll(true)}
                       className="w-full mt-4 py-2 px-4 bg-[#1A1A1A] text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium"
                     >
-                      Show {appointments.length - 4} More Appointments
+                      Δείτε {appointments.length - 4} Περισσότερα ραντεβού
                     </button>
                   )}
                   {showAll && appointments.length > 4 && (
@@ -537,7 +537,7 @@ export default function BookingPage() {
                       onClick={() => setShowAll(false)}
                       className="w-full mt-4 py-2 px-4 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors text-sm font-medium"
                     >
-                      Show Less
+                      Εμφάνιση Λιγότερων
                     </button>
                   )}
                 </div>

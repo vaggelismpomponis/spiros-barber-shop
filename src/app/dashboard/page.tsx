@@ -96,8 +96,8 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow sm:rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h1 className="text-2xl font-bold mb-6">
-              Admin Dashboard{profile?.full_name ? ` - ${profile.full_name}` : ''}
+            <h1 className="text-2xl font-bold mb-6 flex items-center justify-center">
+            Πίνακας ελέγχου διαχειριστή {profile?.full_name ? ` - ${profile.full_name}` : ''}
             </h1>
             
             {error && (
@@ -109,31 +109,31 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-6">
               {/* Quick Actions */}
               <div className="bg-gray-50 p-6 rounded-lg shadow-sm">
-                <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
+                <h2 className="text-lg font-semibold mb-4">Γρήγορες Ενέργειες</h2>
                 <div className="space-y-3">
                   <button
                     onClick={() => router.push('/dashboard/admins')}
                     className="w-full bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
-                    Manage Admins
+                    Διαχείριση Διαχειριστών
                   </button>
                   <button
                     onClick={() => router.push('/dashboard/manage-appointments')}
                     className="w-full bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
-                    Manage Appointments
+                    Διαχείριση των ραντεβού
                   </button>
                   <button
                     onClick={() => router.push('/bookings')}
                     className="w-full bg-[#1A1A1A] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800"
                   >
-                    Book Appointment
+                    Κλείσε Ραντεβού
                   </button>
                   <button
                     onClick={() => router.push('/profile')}
                     className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300"
                   >
-                    View Profile
+                    Προβολή Προφίλ
                   </button>
                 </div>
               </div>
