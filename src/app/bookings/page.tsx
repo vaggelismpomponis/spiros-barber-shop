@@ -502,63 +502,26 @@ export default function BookingPage() {
                   {(showAll ? appointments : appointments.slice(0, 4)).map((appointment) => (
                     <div 
                       key={appointment.id} 
-                      className={`border-l-4 pl-4 py-3 ${
-                        appointment.status === 'confirmed' 
-                          ? 'border-green-500 bg-green-50' 
-                          : appointment.status === 'completed'
-                          ? 'border-blue-500 bg-blue-50'
-                          : appointment.status === 'cancelled'
-                          ? 'border-red-500 bg-red-50'
-                          : 'border-yellow-500 bg-yellow-50'
-                      }`}
+                      className="border-l-4 pl-4 py-3 border-green-500 bg-green-50"
                     >
                       <div className="flex justify-between items-start">
-                        <p className="font-medium text-gray-900">
-                          {appointment.service?.name || 'Unknown Service'}
-                        </p>
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          appointment.status === 'confirmed'
-                            ? 'bg-green-100 text-green-800'
-                            : appointment.status === 'completed'
-                            ? 'bg-blue-100 text-blue-800'
-                            : appointment.status === 'cancelled'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {format(new Date(`${appointment.date}T${appointment.time}`), 'PPP')}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
-                      </p>
-                      {appointment.service?.duration && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Duration: {appointment.service.duration} minutes
-                        </p>
-                      )}
-                      
-                      {/* Only show action buttons for confirmed appointments */}
-                      {appointment.status === 'confirmed' && (
-                        <div className="mt-3 flex gap-2">
-                          <button
-                            onClick={() => updateAppointmentStatus(appointment.id, 'completed', appointment.cal_event_uid || null)}
-                            disabled={updatingAppointmentId === appointment.id}
-                            className="px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                          >
-                            Complete
-                          </button>
-                          <button
-                            onClick={() => updateAppointmentStatus(appointment.id, 'cancelled', appointment.cal_event_uid || null)}
-                            disabled={updatingAppointmentId === appointment.id}
-                            className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 transition-colors disabled:opacity-50"
-                          >
-                            Cancel
-                          </button>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {appointment.service?.name || 'Unknown Service'}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {format(new Date(`${appointment.date}T${appointment.time}`), 'PPP')}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
+                          </p>
+                          {appointment.service?.duration && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Duration: {appointment.service.duration} minutes
+                            </p>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   ))}
                   {!showAll && appointments.length > 4 && (

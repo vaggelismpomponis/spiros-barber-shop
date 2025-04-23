@@ -105,13 +105,13 @@ export function UserMenu({ isAuthenticated }: UserMenuProps) {
           href="/auth/signin"
           className="text-sm font-medium text-black hover:text-gray-400 bg-white px-4 py-2 rounded-md border border-black"
         >
-          Sign in
+          Σύνδεση
         </Link>
         <Link
           href="/auth/signup"
           className="text-sm font-medium text-white bg-black px-4 py-2 rounded-md hover:bg-gray-800"
         >
-          Sign up
+          Εγγραφή
         </Link>
       </div>
     )
