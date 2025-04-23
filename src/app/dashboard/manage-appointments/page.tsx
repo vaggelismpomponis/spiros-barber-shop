@@ -12,6 +12,12 @@ interface Service {
   price: number
 }
 
+interface User {
+  id: string
+  full_name: string | null
+  phone: string | null
+}
+
 interface Appointment {
   id: number
   user_id: string
@@ -21,6 +27,7 @@ interface Appointment {
   status: string
   service: Service
   cal_event_uid?: string
+  user: User
 }
 
 // Admin protection wrapper component
@@ -163,11 +170,13 @@ export default function ManageAppointmentsPage() {
         return;
       }
 
-      const currentDate = new Date().toISOString().split('T')[0];
+      // Fix date handling
+      const today = new Date();
+      const currentDate = today.toISOString().split('T')[0];
       console.log('Fetching appointments from date:', currentDate);
 
       // Get all appointments with service details and proper sorting
-      const { data: appointments, error: appointmentsError } = await supabase
+      const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
         .select(`
           id,
@@ -178,50 +187,89 @@ export default function ManageAppointmentsPage() {
           status,
           cal_event_uid,
           created_at,
-          service:services!inner (
+          service:services (
             id,
             name,
             duration,
             price
           )
         `)
-        .gte('date', currentDate)
+        .filter('date', 'gte', currentDate)
         .order('date', { ascending: true })
         .order('time', { ascending: true });
 
-      console.log('Raw appointments from DB:', appointments);
-
       if (appointmentsError) {
         console.error('Error fetching appointments:', appointmentsError);
-        throw appointmentsError;
+        setError('Error fetching appointments');
+        return;
       }
 
-      // Transform and group appointments by date
-      const transformedAppointments: Appointment[] = (appointments || []).map(apt => ({
-        ...apt,
-        service: Array.isArray(apt.service) ? apt.service[0] : apt.service
-      }));
+      if (appointmentsData) {
+        console.log('Raw appointments:', JSON.stringify(appointmentsData, null, 2));
 
-      // Group appointments by date
-      const groupedAppointments = transformedAppointments.reduce((groups: { [key: string]: Appointment[] }, appointment) => {
-        const date = appointment.date;
-        if (!groups[date]) {
-          groups[date] = [];
+        // Get unique user IDs from appointments
+        const userIds = Array.from(new Set(appointmentsData.map(apt => apt.user_id)));
+        console.log('Unique user IDs:', userIds);
+
+        // Fetch user profiles
+        const { data: userProfiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone')
+          .in('id', userIds);
+
+        if (profilesError) {
+          console.error('Error fetching user profiles:', profilesError);
+          setError('Error fetching user profiles');
+          return;
         }
-        groups[date].push(appointment);
-        return groups;
-      }, {});
 
-      // Sort appointments within each date group by time
-      Object.keys(groupedAppointments).forEach(date => {
-        groupedAppointments[date].sort((a, b) => a.time.localeCompare(b.time));
-      });
+        console.log('Fetched user profiles:', JSON.stringify(userProfiles, null, 2));
 
-      console.log('Final grouped appointments:', groupedAppointments);
-      setAppointments(transformedAppointments);
+        // Map appointments with user and service data
+        const appointmentsWithData = appointmentsData.map(appointment => {
+          const user = userProfiles?.find(u => u.id === appointment.user_id);
+          console.log(`Processing appointment ${appointment.id}:`, {
+            appointment_id: appointment.id,
+            user_id: appointment.user_id,
+            found_user: user || 'Not found',
+            all_profiles: userProfiles?.map(p => ({ id: p.id, name: p.full_name }))
+          });
+
+          // If no user profile found, let's check why
+          if (!user) {
+            console.warn(`No profile found for user ${appointment.user_id}. Available profile IDs:`, 
+              userProfiles?.map(p => p.id)
+            );
+          }
+
+          return {
+            ...appointment,
+            user: user || {
+              id: appointment.user_id,
+              full_name: null,
+              phone: null
+            },
+            service: Array.isArray(appointment.service) 
+              ? appointment.service[0] 
+              : appointment.service
+          } as Appointment;
+        });
+
+        console.log('Final transformed appointments:', JSON.stringify(appointmentsWithData.map(apt => ({
+          id: apt.id,
+          user_id: apt.user_id,
+          user: apt.user,
+          service: apt.service
+        })), null, 2));
+
+        setAppointments(appointmentsWithData);
+      } else {
+        console.log('No appointments found');
+        setAppointments([]);
+      }
     } catch (error) {
       console.error('Error in fetchAppointments:', error);
-      toast.error('Failed to load appointments. Please try again.');
+      setError('Error fetching appointments data');
     } finally {
       setLoading(false);
     }
@@ -388,6 +436,14 @@ export default function ManageAppointmentsPage() {
                                     Duration: {appointment.service.duration} minutes
                                   </p>
                                 )}
+                                <div className="mt-2 space-y-1">
+                                  <p className="text-sm font-medium text-gray-700">
+                                    Client: {appointment.user?.full_name || 'Unknown'}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Phone: {appointment.user?.phone || 'N/A'}
+                                  </p>
+                                </div>
                               </div>
                               <div className="flex flex-col items-end">
                                 <span className={`text-xs font-medium px-2 py-1 rounded-full mb-2 ${

@@ -25,6 +25,33 @@ export async function GET(request: Request) {
           refresh_token: session.refresh_token
         })
       }
+
+      // Create profile if it doesn't exist
+      if (user) {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .single()
+
+        if (!existingProfile) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: user.id,
+                full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Anonymous',
+                phone: user.user_metadata?.phone || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            ])
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError)
+          }
+        }
+      }
     }
   }
 
