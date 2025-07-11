@@ -565,10 +565,9 @@ export default function BookingPage() {
                   config={{
                     theme: 'light',
                     layout: "month_view",
-                    hideEventTypeDetails: false,
-                    layout: "month_view",
+                    hideEventTypeDetails: "false",
                     defaultValues: {
-                      country: { value: "GR", label: "Greece" }
+                      country: "GR"
                     }
                   }}
                 />
