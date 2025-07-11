@@ -6,17 +6,39 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req, res })
 
-  // Refresh session if expired - required for Server Components
-  const { data: { session }, error } = await supabase.auth.getSession()
+  try {
+    // Refresh session if expired - required for Server Components
+    const { data: { session }, error } = await supabase.auth.getSession()
+    
+    // Capture session error for debugging
+    if (error) {
+      console.error('Error getting session in middleware:', error)
+    }
 
-  // If there's a session but it's expired, try to refresh it
-  if (session?.expires_at && session.expires_at <= Math.floor(Date.now() / 1000)) {
-    const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
-    if (refreshError) {
-      // If refresh fails, redirect to sign in
-      if (req.nextUrl.pathname !== '/auth/signin') {
-        return NextResponse.redirect(new URL('/auth/signin', req.url))
+    // If there's a session but it's expired, try to refresh it
+    if (session?.expires_at && session.expires_at <= Math.floor(Date.now() / 1000)) {
+      const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession()
+      
+      if (refreshError) {
+        console.error('Error refreshing session:', refreshError)
+        
+        // If refresh fails on protected routes, redirect to sign in
+        if (req.nextUrl.pathname !== '/auth/signin' && 
+            !req.nextUrl.pathname.startsWith('/auth/callback') && 
+            !req.nextUrl.pathname.startsWith('/_next') &&
+            !req.nextUrl.pathname.startsWith('/api')) {
+          return NextResponse.redirect(new URL('/auth/signin', req.url))
+        }
       }
+    }
+  } catch (err) {
+    console.error('Unexpected error in auth middleware:', err)
+    
+    // Don't redirect if on auth pages or static assets
+    if (!req.nextUrl.pathname.startsWith('/auth/') && 
+        !req.nextUrl.pathname.startsWith('/_next') && 
+        !req.nextUrl.pathname.startsWith('/api')) {
+      return NextResponse.redirect(new URL('/auth/signin', req.url))
     }
   }
 

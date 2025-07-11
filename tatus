@@ -1,5 +1,0 @@
-[33mcommit b9bdb80732d06f386e304d0b4d903e2deddcd813[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m
-Author: Vaggelis Bobonhs <vaggelisbobonhs@gmail.com>
-Date:   Sun Apr 20 17:47:57 2025 +0300
-
-    Enhance error handling in contact form API route

@@ -565,11 +565,10 @@ export default function BookingPage() {
                   config={{
                     theme: 'light',
                     layout: "month_view",
-                    hideEventTypeDetails: "false",
-                    locale: "el",
-                    defaultCountry: "GR",
-                    metadata: {
-                      phoneCountry: "GR"
+                    hideEventTypeDetails: false,
+                    layout: "month_view",
+                    defaultValues: {
+                      country: { value: "GR", label: "Greece" }
                     }
                   }}
                 />

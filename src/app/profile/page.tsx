@@ -232,6 +232,9 @@ export default function ProfilePage() {
               >
                 {uploadingImage ? 'Uploading...' : 'Αλλαγή εικόνας προφίλ'}
               </button>
+
+              {/* Push Notification Subscribe Button */}
+              <PushNotificationSubscribeButton />
             </div>
 
             <form onSubmit={handleUpdateProfile} className="space-y-6">
@@ -339,6 +342,90 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PushNotificationSubscribeButton() {
+  const [status, setStatus] = React.useState<'idle' | 'success' | 'error' | 'denied' | 'loading'>('idle')
+  const [message, setMessage] = React.useState<string>('')
+
+  async function subscribeUserToPush() {
+    setStatus('loading')
+    setMessage('')
+    try {
+      if (!('serviceWorker' in navigator)) throw new Error('Δεν υποστηρίζεται από τον browser (serviceWorker).')
+      setMessage('Βρέθηκε service worker...')
+      const registration = await navigator.serviceWorker.ready
+      setMessage('Service worker έτοιμος...')
+      const permission = await Notification.requestPermission()
+      setMessage('Έγινε αίτημα για άδεια notifications...')
+      if (permission !== 'granted') {
+        setStatus('denied')
+        setMessage('Δεν δόθηκε άδεια για ειδοποιήσεις (permission: ' + permission + ')')
+        return
+      }
+      setMessage('Άδεια notifications δόθηκε! Παίρνω VAPID public key...')
+      const vapidRes = await fetch('/api/vapid-public-key')
+      if (!vapidRes.ok) throw new Error('Αποτυχία fetch /api/vapid-public-key: ' + vapidRes.status)
+      const { publicKey } = await vapidRes.json()
+      if (!publicKey) throw new Error('Δεν βρέθηκε publicKey από το backend.')
+      setMessage('VAPID key: ' + publicKey.slice(0, 16) + '...')
+      const convertedVapidKey = urlBase64ToUint8Array(publicKey)
+      setMessage('Δημιουργία subscription...')
+      let subscription = await registration.pushManager.getSubscription()
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey
+        })
+      }
+      setMessage('Subscription δημιουργήθηκε! Στέλνω στο backend...')
+      // Στέλνεις το subscription object στο backend
+      const res = await fetch('/api/save-subscription', {
+        method: 'POST',
+        body: JSON.stringify(subscription),
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (res.ok) {
+        setStatus('success')
+        setMessage('Εγγραφήκατε επιτυχώς για ειδοποιήσεις!')
+      } else {
+        const errText = await res.text()
+        setStatus('error')
+        setMessage('Αποτυχία εγγραφής για ειδοποιήσεις. ' + errText)
+      }
+    } catch (err: any) {
+      setStatus('error')
+      setMessage('Σφάλμα: ' + (err?.message || String(err)))
+    }
+  }
+
+  // Βοηθητική συνάρτηση
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i)
+    }
+    return outputArray
+  }
+
+  return (
+    <div className="mt-6 flex flex-col items-center">
+      <button
+        type="button"
+        onClick={subscribeUserToPush}
+        disabled={status === 'loading' || status === 'success'}
+        className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400"
+      >
+        {status === 'loading' ? 'Ενεργοποίηση...' : status === 'success' ? 'Ενεργοποιήθηκε!' : 'Ενεργοποίηση ειδοποιήσεων'}
+      </button>
+      {message && (
+        <div className={`mt-2 text-sm ${status === 'success' ? 'text-green-600' : 'text-red-600'}`}>{message}</div>
+      )}
     </div>
   )
 } 
