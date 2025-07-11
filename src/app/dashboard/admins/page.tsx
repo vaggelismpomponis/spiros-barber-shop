@@ -144,19 +144,19 @@ export default function AdminManagementPage() {
 
             {/* Add new admin form */}
             <form onSubmit={handleAddAdmin} className="mb-8">
-              <div className="flex gap-4">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full">
                 <input
                   type="email"
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
                   placeholder="Εισαγάγετε email για προσθήκη ως διαχειριστή"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-black focus:border-black w-full sm:w-auto"
                   disabled={isSubmitting}
                 />
                 <button
                   type="submit"
                   disabled={isSubmitting || !newAdminEmail.trim()}
-                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 disabled:bg-gray-400"
+                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 disabled:bg-gray-400 w-full sm:w-auto"
                 >
                   {isSubmitting ? '...' : 'Προσθήκη Διαχειριστή'}
                 </button>
@@ -171,10 +171,10 @@ export default function AdminManagementPage() {
                 {admins.map((admin) => (
                   <div
                     key={admin.id}
-                    className="flex items-center justify-between bg-white p-4 rounded-md shadow-sm"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-md shadow-sm gap-2 sm:gap-0"
                   >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{admin.email}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 break-words">{admin.email}</p>
                       <p className="text-xs text-gray-500">
                         Added: {new Date(admin.created_at).toLocaleDateString()}
                       </p>
@@ -182,7 +182,7 @@ export default function AdminManagementPage() {
                     <button
                       onClick={() => handleRemoveAdmin(admin.email)}
                       disabled={admins.length <= 1}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium disabled:text-gray-400"
+                      className="text-red-600 hover:text-red-800 text-sm font-medium disabled:text-gray-400 w-full sm:w-auto"
                     >
                       Αφαίρεση
                     </button>
