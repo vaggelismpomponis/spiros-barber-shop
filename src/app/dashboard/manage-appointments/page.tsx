@@ -366,25 +366,23 @@ export default function ManageAppointmentsPage() {
       'Τηλέφωνο': apt.user?.phone || 'Δεν βρέθηκε'
     }));
 
-    // Convert to TSV format using tabs
+    // Convert to CSV format
     const headers = Object.keys(formattedData[0]);
-    const tsvContent = [
-      headers.join('\t'),
+    const csvContent = [
+      headers.join(','),
       ...formattedData.map(row => 
-        headers.map(header => {
-          const value = row[header as keyof typeof row] || '';
-          // Remove any tabs from the value to prevent format issues
-          return value.toString().replace(/\t/g, ' ');
-        }).join('\t')
+        headers.map(header => 
+          JSON.stringify(row[header as keyof typeof row] || '')
+        ).join(',')
       )
     ].join('\n');
 
     // Create and trigger download
-    const blob = new Blob(['\ufeff' + tsvContent], { type: 'text/tab-separated-values;charset=utf-8;' });
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `appointments-${format(new Date(), 'dd-MM-yyyy')}.tsv`);
+    link.setAttribute('download', `appointments-${format(new Date(), 'dd-MM-yyyy')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -405,24 +403,24 @@ export default function ManageAppointmentsPage() {
             <div className="flex justify-end mb-4">
               <button
                 onClick={() => setShowAll(!showAll)}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full sm:w-auto"
               >
                 {showAll ? 'Εμφάνιση μόνο ενεργών' : 'Εμφάνιση Όλων'}
               </button>
             </div>
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mb-6">
                 <h2 className="text-xl font-semibold">Όλα τα ραντεβού</h2>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => exportToExcel(appointments)}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors w-full sm:w-auto"
                   >
                     Εξαγωγή σε Excel
                   </button>
                   <button
                     onClick={() => fetchAppointments()}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors w-full sm:w-auto"
                   >
                     Ανανέωση
                   </button>
@@ -458,29 +456,27 @@ export default function ManageAppointmentsPage() {
                         .map((appointment) => (
                           <div 
                             key={appointment.id} 
-                            className="border-l-4 pl-4 py-3 border-green-500 bg-green-50"
+                            className="border-l-4 pl-4 py-3 border-green-500 bg-green-50 flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center"
                           >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {appointment.service?.name || 'Άγνωστη Υπηρεσία'}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 break-words">
+                                {appointment.service?.name || 'Άγνωστη Υπηρεσία'}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
+                              </p>
+                              {appointment.service?.duration && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Διάρκεια: {appointment.service.duration} λεπτά
                                 </p>
-                                <p className="text-sm text-gray-600">
-                                  {format(new Date(`2000-01-01T${appointment.time}`), 'h:mm a')}
+                              )}
+                              <div className="mt-2 space-y-1">
+                                <p className="text-sm font-medium text-gray-700">
+                                  Πελάτης: {appointment.user?.full_name || 'Άγνωστος'}
                                 </p>
-                                {appointment.service?.duration && (
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    Διάρκεια: {appointment.service.duration} λεπτά
-                                  </p>
-                                )}
-                                <div className="mt-2 space-y-1">
-                                  <p className="text-sm font-medium text-gray-700">
-                                    Πελάτης: {appointment.user?.full_name || 'Άγνωστος'}
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    Τηλέφωνο: {appointment.user?.phone || 'Δεν βρέθηκε'}
-                                  </p>
-                                </div>
+                                <p className="text-xs text-gray-600">
+                                  Τηλέφωνο: {appointment.user?.phone || 'Δεν βρέθηκε'}
+                                </p>
                               </div>
                             </div>
                           </div>
