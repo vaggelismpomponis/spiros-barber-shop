@@ -80,10 +80,10 @@ export default function ServicesPage() {
         </div>
 
         {/* Category Filter */}
-        <div className="mt-8 flex justify-center space-x-4">
+        <div className="mt-8 flex flex-col xs:flex-row justify-center gap-2 xs:gap-4 w-full max-w-2xl mx-auto">
           <button
             onClick={() => setSelectedCategory('all')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium w-full xs:w-auto ${
               selectedCategory === 'all'
                 ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -93,7 +93,7 @@ export default function ServicesPage() {
           </button>
           <button
             onClick={() => setSelectedCategory('haircut')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium w-full xs:w-auto ${
               selectedCategory === 'haircut'
                 ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -103,7 +103,7 @@ export default function ServicesPage() {
           </button>
           <button
             onClick={() => setSelectedCategory('beard')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium w-full xs:w-auto ${
               selectedCategory === 'beard'
                 ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -113,7 +113,7 @@ export default function ServicesPage() {
           </button>
           <button
             onClick={() => setSelectedCategory('combo')}
-            className={`px-4 py-2 rounded-md text-sm font-medium ${
+            className={`px-4 py-2 rounded-md text-sm font-medium w-full xs:w-auto ${
               selectedCategory === 'combo'
                 ? 'bg-[#1A1A1A] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
@@ -124,33 +124,33 @@ export default function ServicesPage() {
         </div>
 
         {/* Services Grid */}
-        <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredServices.map((service) => (
             <div
               key={service.id}
-              className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full"
             >
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+              <div className="p-6 flex flex-col h-full">
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold text-gray-900 break-words">
                       {service.name}
                     </h3>
                     <p className="mt-2 text-sm text-gray-500">
                       {service.description}
                     </p>
                   </div>
-                  <span className="text-2xl font-bold text-gray-900">
+                  <span className="text-2xl font-bold text-gray-900 mt-2 sm:mt-0 sm:ml-4">
                     ${service.price}
                   </span>
                 </div>
-                <div className="mt-4 flex justify-between items-center">
+                <div className="mt-4 flex flex-col gap-2 xs:flex-row xs:justify-between xs:items-center">
                   <span className="text-sm text-gray-500">
                     Duration: {service.duration}
                   </span>
                   <Link
                     href="/bookings"
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1A1A1A] hover:bg-gray-800"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#1A1A1A] hover:bg-gray-800 w-full xs:w-auto"
                   >
                     Κλείσε Ραντεβού
                   </Link>
