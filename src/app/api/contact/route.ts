@@ -3,7 +3,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 // Validation functions
 function validateEmail(email: string): boolean {
@@ -75,25 +76,33 @@ export async function POST(req: Request) {
     }
 
     // Send email notification
-    try {
-      await resend.emails.send({
-        from: 'Spiros Barber Shop <onboarding@resend.dev>',
-        to: process.env.ADMIN_EMAIL!,
-        subject: `New Contact Form Submission: ${subject}`,
-        html: `
-          <h2>New Contact Form Submission</h2>
-          <p><strong>From:</strong> ${name} (${email})</p>
-          <p><strong>Subject:</strong> ${subject}</p>
-          <p><strong>Message:</strong></p>
-          <p>${message}</p>
-        `
-      })
-    } catch (emailError) {
-      console.error('Email sending error:', emailError)
-      // Return success since we saved to database, but log the email error
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: 'Spiros Barber Shop <onboarding@resend.dev>',
+          to: process.env.ADMIN_EMAIL!,
+          subject: `New Contact Form Submission: ${subject}`,
+          html: `
+            <h2>New Contact Form Submission</h2>
+            <p><strong>From:</strong> ${name} (${email})</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong></p>
+            <p>${message}</p>
+          `
+        })
+      } catch (emailError) {
+        console.error('Email sending error:', emailError)
+        // Return success since we saved to database, but log the email error
+        return NextResponse.json({
+          message: 'Message saved but email notification failed',
+          warning: 'Admin notification email could not be sent'
+        })
+      }
+    } else {
+      // No API key, skip email sending
       return NextResponse.json({
-        message: 'Message saved but email notification failed',
-        warning: 'Admin notification email could not be sent'
+        message: 'Message saved but email notification skipped',
+        warning: 'No RESEND_API_KEY set, admin notification email not sent.'
       })
     }
 
